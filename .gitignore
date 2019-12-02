@@ -1,0 +1,13 @@
+/target/classes
+/target/generated-sources
+/target/maven-archiver
+/target/maven-status
+/target/*.original
+.idea
+*.iml
+/.metadata
+/Servers
+/RemoteSystemsTempFiles
+.project
+.settings
+.classpath

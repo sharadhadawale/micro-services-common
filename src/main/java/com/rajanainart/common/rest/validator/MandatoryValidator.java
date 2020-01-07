@@ -3,16 +3,15 @@ package com.rajanainart.common.rest.validator;
 import java.util.Map;
 
 import com.rajanainart.common.rest.RestQueryConfig;
-import org.springframework.stereotype.Component;
-
 import com.rajanainart.common.rest.BaseRestController;
+import org.springframework.stereotype.Component;
 
 @Component("mandatory-validator")
 public class MandatoryValidator implements BaseRestValidator {
 
     public static final String VALIDATOR_KEY = "mandatory-validator";
 
-    public String validate(RestQueryConfig config, RestQueryConfig.ValidationExecutionType type, Map<String, String> params) {
+    public String validate(RestQueryConfig config, RestQueryConfig.ValidationExecutionType type, Map<String, String> params, Map<String, Object> objectParams) {
         StringBuilder message = new StringBuilder();
 
         for (RestQueryConfig.MandatoryValidator v : config.getMandatoryValidators()) {
@@ -21,7 +20,8 @@ public class MandatoryValidator implements BaseRestValidator {
             boolean success = false;
             paramsLoop:
             for (String p : v.getParamNames()) {
-                success = params.containsKey(p) && !params.get(p).isEmpty();
+                success = (params.containsKey(p) && !params.get(p).isEmpty()) ||
+                          (objectParams != null && objectParams.containsKey(p) && objectParams.get(p) != null);
                 if ( success && v.getOperatorType() == RestQueryConfig.ValidationOperatorType.OR ) break paramsLoop;
                 if (!success && v.getOperatorType() == RestQueryConfig.ValidationOperatorType.AND) break paramsLoop;
             }

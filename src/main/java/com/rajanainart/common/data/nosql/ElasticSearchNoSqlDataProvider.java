@@ -1,7 +1,6 @@
 package com.rajanainart.common.data.nosql;
 
 import com.rajanainart.common.data.provider.MemSqlDbProvider;
-import com.rajanainart.common.helper.MiscHelper;
 import com.rajanainart.common.rest.RestQueryConfig;
 import com.rajanainart.common.rest.exception.RestConfigException;
 import org.apache.http.auth.AuthScope;
@@ -79,19 +78,8 @@ public class ElasticSearchNoSqlDataProvider extends MemSqlDbProvider implements 
             IndexRequest  indexRequest     = new IndexRequest (index, id);
             UpdateRequest updateRequest    = new UpdateRequest(index, id);
             XContentBuilder contentBuilder = XContentFactory.jsonBuilder().startObject();
-            for (RestQueryConfig.FieldConfig field : queryConfig.getFields()) {
-                switch (field.getType()) {
-                    case INTEGER:
-                        contentBuilder.field(field.getTargetField(), MiscHelper.convertObjectToLong(record.get(field.getId())));
-                        break;
-                    case NUMERIC:
-                        contentBuilder.field(field.getTargetField(), MiscHelper.convertObjectToDouble(record.get(field.getId())));
-                        break;
-                    default:
-                        contentBuilder.field(field.getTargetField(), String.valueOf(record.get(field.getId())));
-                        break;
-                }
-            }
+            for (RestQueryConfig.FieldConfig field : queryConfig.getFields())
+                contentBuilder.field(field.getTargetField(), field.parseValue(record.get(field.getId())));
             contentBuilder.endObject();
 
             indexRequest .source(contentBuilder);

@@ -7,6 +7,7 @@ import com.rajanainart.common.data.nosql.NoSqlConfig;
 import com.rajanainart.common.integration.IntegrationManager;
 import com.rajanainart.common.rest.BaseRestController;
 import com.rajanainart.common.rest.RestQueryConfig;
+
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -31,7 +32,7 @@ public class NoSqlDbImportIntegrationTask extends ImportIntegrationTask {
             return;
         }
 
-        NoSqlConfig           noSqlConfig = IntegrationManager.NOSQL_CONFIGS.getOrDefault(context.getTaskConfig().getTarget(), null);
+        NoSqlConfig noSqlConfig = IntegrationManager.NOSQL_CONFIGS.getOrDefault(context.getTaskConfig().getTarget(), null);
         BaseNoSqlDataProvider nosql       = null;
         if (noSqlConfig == null) {
             String msg = String.format("NoSql Db configuration is not found %s", context.getTaskConfig().getTarget());

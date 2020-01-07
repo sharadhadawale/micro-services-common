@@ -7,9 +7,11 @@ import java.util.List;
 import java.util.Map;
 
 import com.rajanainart.common.helper.MiscHelper;
-import com.rajanainart.common.integration.task.BaseJavaIntegrationTask;
-import com.rajanainart.common.integration.task.IntegrationTask;
-import com.rajanainart.common.integration.task.JavaIntegrationTask;
+import com.rajanainart.common.config.AppContext;
+import com.rajanainart.common.rest.BaseRestController;
+import com.rajanainart.common.rest.RestMessageEntity;
+import com.rajanainart.common.rest.RestQueryConfig;
+import com.rajanainart.common.rest.RestQueryRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
@@ -25,14 +27,14 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.ResponseBody;
 
-import com.rajanainart.common.config.AppContext;
 import com.rajanainart.common.data.BaseEntity;
 import com.rajanainart.common.data.Database;
-import com.rajanainart.common.rest.BaseRestController;
-import com.rajanainart.common.rest.RestMessageEntity;
-import com.rajanainart.common.rest.RestQueryConfig;
-import com.rajanainart.common.rest.RestQueryRequest;
+import com.rajanainart.common.integration.task.BaseJavaIntegrationTask;
+import com.rajanainart.common.integration.task.IntegrationTask;
+import com.rajanainart.common.integration.task.JavaIntegrationTask;
 import org.springframework.web.util.HtmlUtils;
+
+import javax.servlet.http.HttpServletRequest;
 
 @Controller
 @RequestMapping("/integration")
@@ -50,11 +52,11 @@ public class IntegrationController extends BaseRestController {
             try (Database db = new Database()) {
                 for (String key : IntegrationManager.INTEGRATION_CONFIGS.keySet()) {
                     if (!IntegrationManager.INTEGRATION_CONFIGS.get(key).getActive() ||
-                            !IntegrationManager.INTEGRATION_CONFIGS.get(key).getAutoStart())
+                        !IntegrationManager.INTEGRATION_CONFIGS.get(key).getAutoStart())
                         continue;
 
-                    log = String.format("Starting integration %s", IntegrationManager.INTEGRATION_CONFIGS.get(key).getId());
-                    logger.info(log);
+                    //log = String.format("Starting integration %s", IntegrationManager.INTEGRATION_CONFIGS.get(key).getId());
+                    //logger.info(log);
                     Long processId = db.selectScalar("SELECT process_id AS status FROM CMN_INTEGRATION_PROCESS WHERE status = 0 AND config_name = ?p_name1",
                                             db.new Parameter("p_name1", key));
                     if (processId != null) {
@@ -95,10 +97,44 @@ public class IntegrationController extends BaseRestController {
         ResponseEntity<List<BaseEntity>> result = validate(escaped, headers);
         if (result != null) return result;
 
-        IntegrationManager manager = new IntegrationManager(escaped, body);
+        IntegrationManager manager = new IntegrationManager(null, escaped, body);
         Thread             thread  = new Thread(manager);
         thread.setDaemon(true);
         thread.start();
+
+        long id = manager.getLogger().getProcessId();
+        return new ResponseEntity<>(
+                RestMessageEntity.getInstanceList(String.valueOf(id),
+                        String.format("Integration process started, please use /integration/status/%s for getting the current status", escaped)),
+                headers, HttpStatus.OK);
+    }
+
+    @RequestMapping(value = "/upload/{name:[a-zA-Z0-9]*}", method = RequestMethod.POST)
+    @ResponseBody
+    public ResponseEntity<List<BaseEntity>> executeRestQueryUpload(@PathVariable("name") String name,
+                                                                   HttpServletRequest request) {
+        String            escaped = HtmlUtils.htmlEscape(name);
+        IntegrationConfig config  = IntegrationManager.INTEGRATION_CONFIGS.getOrDefault(escaped, null);
+        HttpHeaders headers       = buildHttpHeaders(RestQueryConfig.RestQueryContentType.JSON.toString());
+        if (config == null)
+            return new ResponseEntity<>(
+                    RestMessageEntity.getInstanceList("", String.format("Invalid Request. No Integration config is available '%s'", escaped)),
+                    headers, HttpStatus.BAD_REQUEST);
+        if (!config.getActive())
+            return new ResponseEntity<>(
+                    RestMessageEntity.getInstanceList("", String.format("Integration config '%s' is disabled", escaped)),
+                    headers, HttpStatus.BAD_REQUEST);
+
+        awaitForTasksCompletion();
+
+        ResponseEntity<List<BaseEntity>> result = validate(escaped, headers);
+        if (result != null) return result;
+
+        IntegrationManager manager = new IntegrationManager(request, escaped, new RestQueryRequest());
+        manager.run();
+        //Thread             thread  = new Thread(manager);
+        //thread.setDaemon(true);
+        //thread.start();
 
         long id = manager.getLogger().getProcessId();
         return new ResponseEntity<>(
@@ -227,17 +263,28 @@ public class IntegrationController extends BaseRestController {
 
             if (msg.size() > 0)
                 db.selectWithCallback(builder.toString(),
-                        (record, index) -> {
-                            msg.get(0).getLogs().add(new IntegrationProcessLog(record));
-                        },
-                        db.new Parameter("p_id", id));
+                        (record, index) -> msg.get(0).getLogs().add(new IntegrationProcessLog(record)),
+                    db.new Parameter("p_id", id));
         }
-        IntegrationProcessMessage result = msg.size() > 0 ? msg.get(0) : null;
-        IntegrationConfig         config = result != null ? IntegrationManager.INTEGRATION_CONFIGS.getOrDefault(result.getName(), null) : null;
-        if (result != null && config != null)
+        HttpHeaders               headers = buildHttpHeaders(RestQueryConfig.RestQueryContentType.JSON.toString());
+        IntegrationProcessMessage result  = msg.size() > 0 ? msg.get(0) : null;
+        IntegrationConfig         config  = result != null ? IntegrationManager.INTEGRATION_CONFIGS.getOrDefault(result.getName(), null) : null;
+        if (result != null && config != null) {
             result.setDesc(config.getName());
-        HttpHeaders headers = buildHttpHeaders(RestQueryConfig.RestQueryContentType.JSON.toString());
-        return new ResponseEntity<>(result, headers, HttpStatus.OK);
+            List<IntegrationProcessMessage> validated = validateForFortify(msg);
+            if (validated.size() > 0)
+                return new ResponseEntity<>(validated.get(0), headers, HttpStatus.OK);
+        }
+        return new ResponseEntity<>(null, headers, HttpStatus.OK);
+    }
+
+    private List<IntegrationProcessMessage> validateForFortify(List<IntegrationProcessMessage> input) {
+        List<IntegrationProcessMessage> output = new ArrayList<>();
+        for (IntegrationProcessMessage m : input) {
+            if (m.getId() != -1 && MiscHelper.isValidName(m.getName()))
+                output.add(m);
+        }
+        return output;
     }
 
     public class IntegrationProcessLog {

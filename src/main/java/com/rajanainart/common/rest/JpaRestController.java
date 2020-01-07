@@ -4,8 +4,6 @@ import java.sql.SQLIntegrityConstraintViolationException;
 import java.util.List;
 import java.util.Map;
 
-import com.rajanainart.common.config.AppContext;
-import com.rajanainart.common.helper.ReflectionHelper;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.http.HttpHeaders;
@@ -19,8 +17,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.rajanainart.common.config.AppContext;
 import com.rajanainart.common.data.BaseEntity;
 import com.rajanainart.common.data.Database;
+import com.rajanainart.common.helper.ReflectionHelper;
 import org.springframework.web.util.HtmlUtils;
 
 @RestController
@@ -93,18 +93,18 @@ public class JpaRestController extends BaseRestController {
 
     @RequestMapping(value = "/save/{entity:[a-zA-Z0-9]*}", method = RequestMethod.POST)
     @ResponseBody
-	public ResponseEntity<BaseEntity> save(@PathVariable("entity") String entityName, @RequestBody Map<String, Object> record) {
+    public ResponseEntity<BaseEntity> save(@PathVariable("entity") String entityName, @RequestBody Map<String, Object> record) {
         String      escaped = HtmlUtils.htmlEscape(entityName);
-		HttpHeaders headers = buildHttpHeaders(RestQueryConfig.RestQueryContentType.JSON.toString());
-		Class<?> clazz = AppContext.getClassTypeOf(escaped);
-		if (clazz == null) {
+        HttpHeaders headers = buildHttpHeaders(RestQueryConfig.RestQueryContentType.JSON.toString());
+        Class<?> clazz = AppContext.getClassTypeOf(escaped);
+        if (clazz == null) {
             String m = String.format(msg, escaped);
             logger.info(m);
-			return new ResponseEntity<>(
-					RestMessageEntity.getInstance("", m, RestMessageEntity.MessageStatus.FAILURE),
-					headers, HttpStatus.INTERNAL_SERVER_ERROR);
-		}
-		Object instance = ReflectionHelper.getInstanceFromMap(clazz, record);
+            return new ResponseEntity<>(
+                    RestMessageEntity.getInstance("", m, RestMessageEntity.MessageStatus.FAILURE),
+                    headers, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        Object instance = ReflectionHelper.getInstanceFromMap(clazz, record);
         if (instance != null) {
             try (Database db = new Database()) {
                 db.save(instance);
@@ -118,7 +118,38 @@ public class JpaRestController extends BaseRestController {
             return new ResponseEntity<>(RestMessageEntity.getInstance("", "Record saved Successfully",RestMessageEntity.MessageStatus.SUCCESS), headers, HttpStatus.OK);
         }
         return new ResponseEntity<>(RestMessageEntity.getInstance("","Could not build hibernate entity from the parameters", RestMessageEntity.MessageStatus.FAILURE),headers, HttpStatus.INTERNAL_SERVER_ERROR);
-	}
+    }
+
+    @RequestMapping(value = "/save-all/{entity:[a-zA-Z0-9]*}", method = RequestMethod.POST)
+    @ResponseBody
+    public ResponseEntity<BaseEntity> saveAll(@PathVariable("entity") String entityName, @RequestBody List<Map<String, Object>> records) {
+        String      escaped = HtmlUtils.htmlEscape(entityName);
+        HttpHeaders headers = buildHttpHeaders(RestQueryConfig.RestQueryContentType.JSON.toString());
+        Class<?> clazz = AppContext.getClassTypeOf(escaped);
+        if (clazz == null) {
+            String m = String.format(msg, escaped);
+            logger.info(m);
+            return new ResponseEntity<>(
+                    RestMessageEntity.getInstance("", m, RestMessageEntity.MessageStatus.FAILURE),
+                    headers, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        try (Database db = new Database()) {
+            for (Map<String, Object> record : records) {
+                Object instance = ReflectionHelper.getInstanceFromMap(clazz, record);
+                if (instance != null)
+                    db.save(instance);
+                else
+                    return new ResponseEntity<>(RestMessageEntity.getInstance("","Could not build hibernate entity from the parameters", RestMessageEntity.MessageStatus.FAILURE),headers, HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+            db.commit();
+        } catch (Exception ex) {
+            if (ex.getCause().getCause() != null && ex.getCause().getCause().getCause() != null && ex.getCause().getCause().getCause().getClass() == SQLIntegrityConstraintViolationException.class) {
+                return new ResponseEntity<>(RestMessageEntity.getInstance("", "Record already exists", RestMessageEntity.MessageStatus.FAILURE), headers, HttpStatus.OK);
+            }
+            return new ResponseEntity<>(RestMessageEntity.getInstance("", ex.getMessage(), RestMessageEntity.MessageStatus.FAILURE), headers, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        return new ResponseEntity<>(RestMessageEntity.getInstance("", "Records have been saved Successfully",RestMessageEntity.MessageStatus.SUCCESS), headers, HttpStatus.OK);
+    }
 
     @RequestMapping(value = "/update/{entity:[a-zA-Z0-9]*}", method = RequestMethod.POST)
     @ResponseBody
@@ -142,5 +173,32 @@ public class JpaRestController extends BaseRestController {
             return new ResponseEntity<>(RestMessageEntity.getInstance("", "Record updated Successfully",RestMessageEntity.MessageStatus.SUCCESS), headers, HttpStatus.OK);
         }
         return new ResponseEntity<>(RestMessageEntity.getInstance("","Could not build hibernate entity from the parameters", RestMessageEntity.MessageStatus.FAILURE),headers, HttpStatus.INTERNAL_SERVER_ERROR);
+    }
+
+    @RequestMapping(value = "/update-all/{entity:[a-zA-Z0-9]*}", method = RequestMethod.POST)
+    @ResponseBody
+    public ResponseEntity<BaseEntity> updateAll(@PathVariable("entity") String entityName, @RequestBody List<Map<String, Object>> records) {
+        String      escaped = HtmlUtils.htmlEscape(entityName);
+        HttpHeaders headers = buildHttpHeaders(RestQueryConfig.RestQueryContentType.JSON.toString());
+        Class<?>    clazz   = AppContext.getClassTypeOf(escaped);
+        if (clazz == null) {
+            String m = String.format(msg, escaped);
+            logger.info(m);
+            return new ResponseEntity<>(RestMessageEntity.getInstance("", m, RestMessageEntity.MessageStatus.FAILURE), headers, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+        try (Database db = new Database()) {
+            for (Map<String, Object> record : records) {
+                Object instance = ReflectionHelper.getInstanceFromMap(clazz, record);
+                if (instance != null)
+                    db.update(instance);
+                else
+                    return new ResponseEntity<>(RestMessageEntity.getInstance("", "Could not build hibernate entity from the parameters", RestMessageEntity.MessageStatus.FAILURE), headers, HttpStatus.INTERNAL_SERVER_ERROR);
+            }
+            db.commit();
+        }
+        catch (Exception ex) {
+            return new ResponseEntity<>(RestMessageEntity.getInstance("", ex.getMessage(), RestMessageEntity.MessageStatus.FAILURE), headers, HttpStatus.OK);
+        }
+        return new ResponseEntity<>(RestMessageEntity.getInstance("", "Records have been updated Successfully", RestMessageEntity.MessageStatus.SUCCESS), headers, HttpStatus.OK);
     }
 }

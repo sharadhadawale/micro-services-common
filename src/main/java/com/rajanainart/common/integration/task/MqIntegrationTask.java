@@ -3,6 +3,7 @@ package com.rajanainart.common.integration.task;
 import com.rajanainart.common.data.Database;
 import com.rajanainart.common.data.QueryExecutor;
 import com.rajanainart.common.data.encoder.JsonMessageEncoder;
+import com.rajanainart.common.helper.MiscHelper;
 import com.rajanainart.common.integration.IntegrationConfig;
 import com.rajanainart.common.integration.IntegrationContext;
 import com.rajanainart.common.integration.IntegrationManager;
@@ -17,6 +18,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
+import org.springframework.web.util.HtmlUtils;
 
 import java.security.SecureRandom;
 import java.sql.Connection;
@@ -31,7 +33,7 @@ public class MqIntegrationTask implements IntegrationTask {
     private static final Logger logger = LoggerFactory.getLogger(MqIntegrationTask.class);
     private IntegrationContext context  = null;
     private Status             current  = Status.PROCESSING;
-    private MqConfig           mqConfig = null;
+    private MqConfig mqConfig = null;
     private IntegrationTask.DelegateTransform transform;
 
     @Override
@@ -82,7 +84,7 @@ public class MqIntegrationTask implements IntegrationTask {
             int index = 0;
             for (String ct : context.getTaskConfig().getExecValues()) {
                 IntegrationConfig.TaskConfig task = context.getTaskConfig(ct);
-                RestQueryConfig       queryConfig = BaseRestController.REST_QUERY_CONFIGS.getOrDefault(task.getExecValue(), null);
+                RestQueryConfig queryConfig = BaseRestController.REST_QUERY_CONFIGS.getOrDefault(task.getExecValue(), null);
                 if (queryConfig == null) {
                     String msg = "Publish can't be completed, as the REST configuration is not available";
                     context.getLogger().log(msg);
@@ -100,7 +102,7 @@ public class MqIntegrationTask implements IntegrationTask {
                 if (queryConfig.getRestQueryUsedFor() == RestQueryConfig.RestQueryUsedFor.META)
                     buildMqMetaMessage(properties, index++, queryConfig, task);
                 else if (queryConfig.getRestQueryUsedFor() == RestQueryConfig.RestQueryUsedFor.RESULT) {
-                    QueryExecutor             executor = new QueryExecutor(queryConfig, context.getRestQueryRequest(), context.getSourceDb());
+                    QueryExecutor executor = new QueryExecutor(queryConfig, context.getRestQueryRequest(), context.getSourceDb());
                     List<Map<String, Object>> records  = executor.fetchResultSet();
 
                     String  messageId = String.format("integration-result-%s-%s", context.getConfig().getId(), new SecureRandom().nextLong());
@@ -162,16 +164,21 @@ public class MqIntegrationTask implements IntegrationTask {
     private void buildMqMetaMessage(Map<String, Object> properties, int idx,
                                     RestQueryConfig queryConfig, IntegrationConfig.TaskConfig task) {
         properties.put("process_id", context.getLogger().getProcessId());
-        properties.put(String.format("%s-id"          , idx), queryConfig.getId());
-        properties.put(String.format("%s-source"      , idx), task.getSource());
-        properties.put(String.format("%s-target"      , idx), task.getTarget());
-        properties.put(String.format("%s-target-table", idx), queryConfig.getTarget());
+        if (MiscHelper.isValidName(queryConfig.getId()))
+            properties.put(String.format("%s-id"    , idx), HtmlUtils.htmlEscape(queryConfig.getId()));
+        if (MiscHelper.isValidName(task.getSource()))
+            properties.put(String.format("%s-source", idx), HtmlUtils.htmlEscape(task.getSource()));
+        if (MiscHelper.isValidName(task.getTarget()))
+            properties.put(String.format("%s-target", idx), HtmlUtils.htmlEscape(task.getTarget()));
+        if (MiscHelper.isValidName(queryConfig.getTarget()))
+            properties.put(String.format("%s-target-table", idx), HtmlUtils.htmlEscape(queryConfig.getTarget()));
         QueryExecutor executor = new QueryExecutor(queryConfig, context.getRestQueryRequest(), context.getLogger().getLoggerDb());
         String query           = queryConfig.getQuery();
         for (Database.Parameter p : executor.buildDbParameters()) {
-            query = query.replaceAll(String.format("%s%s", Database.QUERY_PARAMETER_REGEX, p.getName()),
+            query = query.replaceAll(String.format("%s%s", Database.QUERY_PARAMETER_REGEX, HtmlUtils.htmlEscape(p.getName())),
                                      String.format("'%s'", p.getValue()));
-            properties.put(String.format("%s-parameter-%s", idx, p.getName()), p.getValue());
+            if (MiscHelper.isValidName(p.getName()))
+                properties.put(String.format("%s-parameter-%s", idx, HtmlUtils.htmlEscape(p.getName())), p.getValue());
         }
         properties.put(String.format("%s-query", idx), query);
 

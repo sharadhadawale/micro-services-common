@@ -13,30 +13,33 @@ import com.rajanainart.common.rest.RestQueryConfig;
 import com.rajanainart.common.rest.RestQueryRequest;
 import com.rajanainart.common.transform.BaseTransform;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.Map;
 
 public class IntegrationManager implements Runnable {
 
-    public final static Map<String, BaseTransform    > TRANSFORMS          = AppContext.getBeansOfType(BaseTransform.class);
+    public final static Map<String, BaseTransform> TRANSFORMS          = AppContext.getBeansOfType(BaseTransform.class);
     public final static Map<String, IntegrationConfig> INTEGRATION_CONFIGS = AppConfig.getBeansFromConfig("/integration-framework/process-config", "process-config", "id");
-    public final static Map<String, NoSqlConfig      > NOSQL_CONFIGS       = AppConfig.getBeansFromConfig("/nosql-configs/nosql", "nosql-config", "id");
+    public final static Map<String, NoSqlConfig> NOSQL_CONFIGS       = AppConfig.getBeansFromConfig("/nosql-configs/nosql", "nosql-config", "id");
     public final static Map<String, MqConfig         > MQ_CONFIGS          = AppConfig.getBeansFromConfig("/mq-configs/mq"  , "mq-config" , "id");
     public final static Map<String, NasConfig        > NAS_CONFIGS         = AppConfig.getBeansFromConfig("/nas-configs/nas", "nas-config", "id");
 
     private IntegrationConfig  config  = null;
     private IntegrationContext context = null;
     private IntegrationLog     logger  = null;
-    private RestQueryRequest   request = new RestQueryRequest();
+    private HttpServletRequest servletRequest;
+    private RestQueryRequest request = new RestQueryRequest();
 
     public IntegrationConfig  getConfig () { return config ; }
     public IntegrationContext getContext() { return context; }
     public IntegrationLog     getLogger () { return logger ; }
 
-    public IntegrationManager(IaaSRequest iaaSRequest) {
+    public IntegrationManager(HttpServletRequest servletRequest, IaaSRequest iaaSRequest) {
         updateConfigWithIaaSRequest(iaaSRequest);
 
-        init(iaaSRequest.getIntegrationName());
+        init(servletRequest, iaaSRequest.getIntegrationName());
         context = new IntegrationContext(config, logger, iaaSRequest.getTaskName());
+        context.setHttpServletRequest(servletRequest);
 
         synchronized (BaseRestController.REST_QUERY_CONFIGS) {
             String key = iaaSRequest.getRESTQueryName();
@@ -44,12 +47,12 @@ public class IntegrationManager implements Runnable {
         }
     }
 
-    public IntegrationManager(String configId) {
-        init(configId);
+    public IntegrationManager(HttpServletRequest servletRequest, String configId) {
+        init(servletRequest, configId);
     }
 
-    public IntegrationManager(String configId, RestQueryRequest request) {
-        this(configId);
+    public IntegrationManager(HttpServletRequest servletRequest, String configId, RestQueryRequest request) {
+        this(servletRequest, configId);
         if (request != null) {
             this.request = request;
             if (request.getParams() != null && logger != null && request.getParams().size() > 0)
@@ -57,11 +60,12 @@ public class IntegrationManager implements Runnable {
         }
     }
 
-    private void init(String configId) {
+    private void init(HttpServletRequest servletRequest, String configId) {
         if (!INTEGRATION_CONFIGS.containsKey(configId))
             throw new NullPointerException(String.format("Integration config %s does not exist", configId));
         config = INTEGRATION_CONFIGS.get(configId);
         logger = new IntegrationLog(config);
+        this.servletRequest = servletRequest;
         logger.log(String.format("Integration process is initialized with config %s", config.getId()));
     }
 
@@ -88,13 +92,15 @@ public class IntegrationManager implements Runnable {
 
     @Override
     public void run() {
-        IntegrationTask task   = null;
+        IntegrationTask        task   = null;
         IntegrationTask.Status status = IntegrationTask.Status.PROCESSING;
         for (IntegrationConfig.TaskConfig t : config.getTasks()) {
             try {
                 if (t.getLevel() == IntegrationConfig.ExecLevel.DEPENDENT) continue;
-                if (context == null)
+                if (context == null) {
                     context = new IntegrationContext(config, logger, t.getId());
+                    context.setHttpServletRequest(servletRequest);
+                }
                 else
                     context.setTask(t.getId());
                 context.setRestQueryRequest(request);

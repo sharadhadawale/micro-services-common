@@ -4,6 +4,7 @@ import com.rajanainart.common.data.QueryExecutor;
 import com.rajanainart.common.integration.IntegrationContext;
 import com.rajanainart.common.rest.BaseRestController;
 import com.rajanainart.common.rest.DefaultEntityHandler;
+
 import com.rajanainart.common.rest.RestQueryConfig;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;

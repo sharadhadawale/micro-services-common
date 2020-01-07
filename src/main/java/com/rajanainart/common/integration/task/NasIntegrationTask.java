@@ -5,6 +5,7 @@ import com.rajanainart.common.integration.IntegrationManager;
 import com.rajanainart.common.nas.NasConfig;
 import com.rajanainart.common.nas.NasFile;
 import com.rajanainart.common.nas.NasFolder;
+
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
@@ -38,15 +39,17 @@ public class NasIntegrationTask implements IntegrationTask {
 
         try {
             if (nasConfig.getOperationType() == NasConfig.OperationType.NAS_COPY) {
-                NasFolder nasFolder = new NasFolder(nasConfig.getSource());
+                NasFolder nasFolder = new NasFolder(nasConfig.getSource(), "");
                 nasFolder.setIntegrationLog(context.getLogger());
                 nasFolder.copyAllFilesParallel(nasConfig.getTarget(), nasConfig.getFilterRegex(),
                                                nasConfig.getTargetExists() == NasConfig.TargetExists.REPLACE);
                 current = Status.SUCCESS_COMPLETE;
             }
             else if (nasConfig.getOperationType() == NasConfig.OperationType.UPLOAD) {
-                if (context.getUploadFile() != null) {
-                    NasFile file = new NasFile(nasConfig.getTarget(), context.getUploadFile());
+                if (context.getUploadFiles() != null) {
+                    String subFolderName = context.getServletRequest().getParameter(NasFile.HTTP_SUB_FOLDER_NAME_KEY);
+                    NasFile file = new NasFile(nasConfig.getTarget(), subFolderName, context.getUploadFiles());
+                    file.setIntegrationLog(context.getLogger());
                     file.copy(null);
                     current = Status.SUCCESS_COMPLETE;
                 }

@@ -14,7 +14,7 @@ import com.rajanainart.common.rest.RestQueryConfig;
 
 public interface BaseRestValidator {
 
-    String validate(RestQueryConfig config, RestQueryConfig.ValidationExecutionType type, Map<String, String> params);
+    String validate(RestQueryConfig config, RestQueryConfig.ValidationExecutionType type, Map<String, String> params, Map<String, Object> objectParams);
 
     default <T extends BaseEntity, V> Map<String, V> buildResultSetReturnValues(Class<T> sourceType, Class<V> targetType, ResultSet record) {
         Map<String, V> methodValues = new HashMap<>();

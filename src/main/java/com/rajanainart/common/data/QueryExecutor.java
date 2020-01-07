@@ -37,6 +37,8 @@ public class QueryExecutor implements Closeable {
         for (RestQueryConfig.ParameterConfig p : config.getParameters()) {
             if (request.getParams().containsKey(p.getId()))
                 parameters[index++] = db.new Parameter(p.getId(), request.getParams().get(p.getId()));
+            else if (request.getParamsWithObject().containsKey(p.getId()))
+                parameters[index++] = db.new Parameter(p.getId(), request.getParamsWithObject().get(p.getId()));
             else
                 parameters[index++] = db.new Parameter(p.getId(), "");
         }
@@ -85,6 +87,8 @@ public class QueryExecutor implements Closeable {
         Database.Parameter[] parameters = buildDbParameters();
         if (request.getCurrentPageNumber() != -1)
             db.selectWithCallback(getPagedQuery(), callback, parameters);
+        else if (request.hasCurrentPageNumber() && request.getCurrentPageNumber() == -1)
+            db.selectWithCallback(getFilteredQuery(), callback, parameters);
         db.selectWithCallback(config.getQuery(), callback, parameters);
     }
 
@@ -92,7 +96,20 @@ public class QueryExecutor implements Closeable {
         Database.Parameter[] parameters = buildDbParameters();
         if (request.getCurrentPageNumber() != -1)
             return db.selectAsMapList(getPagedQuery(), parameters);
+        else if (request.hasCurrentPageNumber() && request.getCurrentPageNumber() == -1)
+            return db.selectAsMapList(getFilteredQuery(), parameters);
         return db.selectAsMapList(config.getQuery(), parameters);
+    }
+
+    public <T> List<T> fetchClassResultSetAsEntity(Class<T> clazz) {
+        Database.Parameter[] parameters = buildDbParameters();
+        if (!isMandatoryFiltersAvailable())
+            return db.bindClassList(clazz, getEmptyQuery(), parameters);
+        else if (request.getCurrentPageNumber() != -1)
+            return db.bindClassList(clazz, getPagedQuery(), parameters);
+        else if (request.hasCurrentPageNumber() && request.getCurrentPageNumber() == -1)
+            return db.bindClassList(clazz, getFilteredQuery(), parameters);
+        return db.bindClassList(clazz, getFilteredQuery(), parameters);
     }
 
     public <T extends BaseEntity> List<T> fetchResultSetAsEntity(Class<T> clazz) {
@@ -101,6 +118,8 @@ public class QueryExecutor implements Closeable {
             return db.bindList(clazz, getEmptyQuery(), parameters);
         else if (request.getCurrentPageNumber() != -1)
             return db.bindList(clazz, getPagedQuery(), parameters);
+        else if (request.hasCurrentPageNumber() && request.getCurrentPageNumber() == -1)
+            return db.bindList(clazz, getFilteredQuery(), parameters);
         return db.bindList(clazz, getFilteredQuery(), parameters);
     }
 
@@ -110,6 +129,8 @@ public class QueryExecutor implements Closeable {
             return db.bindList(clazz, getEmptyQuery(), validate, parameters);
         else if (request.getCurrentPageNumber() != -1)
             return db.bindList(clazz, getPagedQuery(), validate, parameters);
+        else if (request.hasCurrentPageNumber() && request.getCurrentPageNumber() == -1)
+            return db.bindList(clazz, getFilteredQuery(), validate, parameters);
         return db.bindList(clazz, config.getQuery(), validate, parameters);
     }
 
@@ -119,6 +140,8 @@ public class QueryExecutor implements Closeable {
             return db.findMultiple(clazz, getEmptyQuery(), parameters);
         else if (request.getCurrentPageNumber() != -1)
             return db.findMultiple(clazz, getPagedQuery(), parameters);
+        else if (request.hasCurrentPageNumber() && request.getCurrentPageNumber() == -1)
+            return db.findMultiple(clazz, getFilteredQuery(), parameters);
         return db.findMultiple(clazz, config.getQuery(), parameters);
     }
 
@@ -133,6 +156,8 @@ public class QueryExecutor implements Closeable {
             return db.selectAsMapList(getEmptyQuery(), parameters);
         else if (request.getCurrentPageNumber() != -1)
             return db.selectAsMapList(getPagedQuery(), parameters);
+        else if (request.hasCurrentPageNumber() && request.getCurrentPageNumber() == -1)
+            return db.selectAsMapList(getFilteredQuery(), parameters);
         return db.selectAsMapList(getFilteredQuery(), parameters);
     }
 
@@ -196,7 +221,7 @@ public class QueryExecutor implements Closeable {
                     break;
                 case NULL:
                 case NOT_NULL:
-                    builder.append(String.format("%s %s", filter.getFieldId(), filter.getOperator()));
+                    builder.append(String.format("%s IS %s", filter.getFieldId(), filter.getOperator()));
                     break;
                 case IN:
                 case NOT_IN:
@@ -208,20 +233,23 @@ public class QueryExecutor implements Closeable {
                 case LESSER_THAN:
                 case LESSER_THAN_EQUAL_TO:
                     if (filter.getActualFieldType() == BaseMessageColumn.ColumnType.DATE)
-                        builder.append(String.format("TRUNC(%s) %s TRUNC(TO_DATE('%s', '%s'))", filter.getFieldId(), filter.getOperator(), filter.getValue1(), ORACLE_DATE_STRING_FORMAT));
+                        builder.append(String.format("TO_CHAR(%s, '%s') %s '%s'", filter.getFieldId(), ORACLE_DATE_STRING_FORMAT, filter.getOperator(), filter.getValue1()));
                     else
                         builder.append(String.format("%s %s %s", filter.getFieldId(), filter.getOperator(), filter.getValue1()));
                     break;
                 case BETWEEN:
                 case NOT_BETWEEN:
-                    builder.append(String.format("%s %s %s AND %s", filter.getFieldId(), filter.getOperator(), filter.getValue1(), filter.getValue2()));
+                    if (filter.getActualFieldType() == BaseMessageColumn.ColumnType.INTEGER || filter.getActualFieldType() == BaseMessageColumn.ColumnType.NUMERIC)
+                        builder.append(String.format("%s %s %s AND %s", filter.getFieldId(), filter.getOperator(), filter.getValue1(), filter.getValue2()));
+                    else if (filter.getActualFieldType() == BaseMessageColumn.ColumnType.DATE)
+                        builder.append(String.format("TO_CHAR(%s, '%s') %s '%s' AND '%s'", filter.getFieldId(), ORACLE_DATE_STRING_FORMAT, filter.getOperator(), filter.getValue1(), filter.getValue2()));
                     break;
                 case EQUAL:
                 case NOT_EQUAL:
                     if (filter.getActualFieldType() == BaseMessageColumn.ColumnType.INTEGER || filter.getActualFieldType() == BaseMessageColumn.ColumnType.NUMERIC)
                         builder.append(String.format("%s %s %s", filter.getFieldId(), filter.getOperator(), filter.getValue1()));
                     else if (filter.getActualFieldType() == BaseMessageColumn.ColumnType.DATE)
-                        builder.append(String.format("TRUNC(%s) %s TRUNC(TO_DATE('%s', '%s'))", filter.getFieldId(), filter.getOperator(), filter.getValue1(), ORACLE_DATE_STRING_FORMAT));
+                        builder.append(String.format("TO_CHAR(%s, '%s') %s '%s'", filter.getFieldId(), ORACLE_DATE_STRING_FORMAT, filter.getOperator(), filter.getValue1()));
                     else
                         builder.append(String.format("%s %s '%s'", filter.getFieldId(), filter.getOperator(), filter.getValue1()));
                     break;

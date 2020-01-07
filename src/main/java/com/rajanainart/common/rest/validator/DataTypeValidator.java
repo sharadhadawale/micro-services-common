@@ -13,7 +13,7 @@ public class DataTypeValidator implements BaseRestValidator {
 
     public static final String VALIDATOR_KEY = "type-validator";
 
-    public String validate(RestQueryConfig config, RestQueryConfig.ValidationExecutionType type, Map<String, String> params) {
+    public String validate(RestQueryConfig config, RestQueryConfig.ValidationExecutionType type, Map<String, String> params, Map<String, Object> objectParams) {
         StringBuilder message = new StringBuilder();
 
         for (RestQueryConfig.TypeValidator v : config.getTypeValidators()) {

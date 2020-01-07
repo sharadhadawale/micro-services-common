@@ -8,6 +8,7 @@ import java.util.Map;
 
 import com.rajanainart.common.data.QueryExecutor;
 import com.rajanainart.common.config.AppContext;
+import com.rajanainart.common.helper.MiscHelper;
 import com.rajanainart.common.upload.ExcelDocument;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -30,14 +31,37 @@ import javax.servlet.http.HttpServletResponse;
 @RequestMapping("/rest")
 public class RestController extends BaseRestController {
     private static final Logger logger = LogManager.getLogger(RestController.class);
-    public final static Map<String, Class<BaseEntity>> BASE_ENTITY_TYPES = AppContext.getClassTypesOf(BaseEntity.class);
+    public final static Map<String, Class<BaseEntity   >> BASE_ENTITY_TYPES    = AppContext.getClassTypesOf(BaseEntity   .class);
 
     @RequestMapping(value = "/meta/{service:[a-zA-Z0-9]*}/{action:[a-zA-Z0-9]*}", method = RequestMethod.GET)
     @ResponseBody
     public ResponseEntity<RestQueryConfig> executeRestMetaQuery(@PathVariable("service") String serviceName, @PathVariable("action") String actionName) {
-        RestQueryConfig config = getRestQueryConfig(serviceName, actionName);
+        String escapedServiceName = HtmlUtils.htmlEscape(serviceName);
+        String escapedActionName  = HtmlUtils.htmlEscape(actionName );
+        RestQueryConfig config = getRestQueryConfig(escapedServiceName, escapedActionName);
         HttpHeaders headers    = buildHttpHeaders(RestQueryConfig.RestQueryContentType.JSON.toString());
-        return new ResponseEntity<>(config, headers, HttpStatus.OK);
+        if (MiscHelper.isValidName(config.getId()))
+            return new ResponseEntity<>(config, headers, HttpStatus.OK);
+        return new ResponseEntity<>(null, headers, HttpStatus.OK);
+    }
+
+    @RequestMapping(value = "/count/{service:[a-zA-Z0-9]*}/{action:[a-zA-Z0-9]*}", method = RequestMethod.POST,
+                    produces = {MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_XML_VALUE})
+    @ResponseBody
+    public ResponseEntity<Long> executeRestCountQuery(@PathVariable("service") String serviceName, @PathVariable("action") String actionName,
+                                                      @RequestBody RestQueryRequest body) {
+        String escapedServiceName = HtmlUtils.htmlEscape(serviceName);
+        String escapedActionName  = HtmlUtils.htmlEscape(actionName );
+        RestQueryConfig config = getRestQueryConfig(escapedServiceName, escapedActionName);
+        HttpHeaders headers    = buildHttpHeaders(RestQueryConfig.RestQueryContentType.JSON.toString());
+        if (config != null && MiscHelper.isValidName(config.getId())) {
+            long count = 0;
+            try (QueryExecutor executor = new QueryExecutor(config, body)) {
+                count = executor.getTotalRecordCount();
+            }
+            return new ResponseEntity<>(count, headers, HttpStatus.OK);
+        }
+        return new ResponseEntity<>(0L, headers, HttpStatus.OK);
     }
 
     @RequestMapping(value = {
@@ -73,13 +97,19 @@ public class RestController extends BaseRestController {
         }
 
         try (Database db = new Database(config.getSourceDb())) {
-            BaseEntityHandler process = new DefaultEntityHandler();
+            DefaultEntityHandler process = new DefaultEntityHandler();
             process.setup(null, config, body, db);
             String msg = process.preValidateRestEntity();
 
             if (msg.equals(SUCCESS)) {
-                QueryExecutor executor = new QueryExecutor(config, body, db);
-                result.addAll(executor.selectAsMapList());
+                result.addAll(process.fetchRestQueryAsMap());
+                if (body.getPageSize().orElse(-1) > 0 && body.getCurrentPageNumber() != -1) {
+                    if (result.size() == 0) result.add(new HashMap<>());
+
+                    QueryExecutor executor = new QueryExecutor(config, body, db);
+                    result.get(0).put("total-records", executor.getTotalRecordCount());
+                    result.get(0).put("current-page" , body.getCurrentPageNumber());
+                }
                 return new ResponseEntity<>(result, headers, HttpStatus.OK);
             }
             if (!msg.startsWith(SUCCESS) && !msg.isEmpty()) {
@@ -159,7 +189,12 @@ public class RestController extends BaseRestController {
         }
     }
 
-    @RequestMapping(value = "/bulk/{service:[a-zA-Z0-9]*}/{action:[a-zA-Z0-9]*}", method = RequestMethod.POST)
+    @RequestMapping(value = {
+                                "/bulk/{service:[a-zA-Z0-9]*}/{action:[a-zA-Z0-9]*}",
+                                "/dml/{service:[a-zA-Z0-9]*}/{action:[a-zA-Z0-9]*}"
+                            },
+                    method   = RequestMethod.POST,
+                    produces = {MediaType.APPLICATION_JSON_VALUE, MediaType.APPLICATION_XML_VALUE})
     @ResponseBody
     public ResponseEntity<List<BaseEntity>> executeRestQueryMultiple(@PathVariable("service") String serviceName,
                                                                      @PathVariable("action" ) String actionName ,
@@ -175,7 +210,7 @@ public class RestController extends BaseRestController {
                     headers, HttpStatus.BAD_REQUEST);
         if (config.getRestQueryType() == RestQueryConfig.RestQueryType.SELECT)
             return new ResponseEntity<>(
-                    RestMessageEntity.getInstanceList("", String.format("Bulk REST query does not support SELECT, Service '%s' and action '%s'", escapedServiceName, escapedActionName), RestMessageEntity.MessageStatus.FAILURE),
+                    RestMessageEntity.getInstanceList("", String.format("Bulk/DML REST query does not support SELECT, Service '%s' and action '%s'", escapedServiceName, escapedActionName), RestMessageEntity.MessageStatus.FAILURE),
                     headers, HttpStatus.BAD_REQUEST);
         if (!BASE_ENTITY_TYPES.containsKey(config.getEntityName()))
             return new ResponseEntity<>(
@@ -234,6 +269,10 @@ public class RestController extends BaseRestController {
             return new ResponseEntity<>(
                     RestMessageEntity.getInstanceList("", String.format("Invalid Request. No REST query config is available for the service '%s' and action '%s'", escapedServiceName, escapedActionName), RestMessageEntity.MessageStatus.FAILURE),
                     headers, HttpStatus.BAD_REQUEST);
+        if (!BASE_ENTITY_TYPES.containsKey(config.getEntityName()))
+            return new ResponseEntity<>(
+                    RestMessageEntity.getInstanceList("", String.format("BaseRestEntity '%s' does not exist", config.getEntityName()), RestMessageEntity.MessageStatus.FAILURE),
+                    headers, HttpStatus.INTERNAL_SERVER_ERROR);
 
         List<BaseEntity> results = new ArrayList<>();
         String prefix = "restentityhandler";
@@ -246,10 +285,6 @@ public class RestController extends BaseRestController {
             process.setup(BASE_ENTITY_TYPES.get(config.getEntityName()), config, body, db);
             String msg = process.preValidateRestEntity();
             if (msg.equals(SUCCESS)) {
-                if (!BASE_ENTITY_TYPES.containsKey(config.getEntityName()))
-                    return new ResponseEntity<>(
-                            RestMessageEntity.getInstanceList("", String.format("BaseRestEntity '%s' does not exist", config.getEntityName()), RestMessageEntity.MessageStatus.FAILURE),
-                            headers, HttpStatus.INTERNAL_SERVER_ERROR);
                 StringBuilder message = new StringBuilder();
                 if (config.getRestQueryType() == RestQueryConfig.RestQueryType.DML) {
                     List<BaseEntity> result = process.executeQuery(message);
@@ -289,5 +324,4 @@ public class RestController extends BaseRestController {
         return new ResponseEntity<>(RestMessageEntity.getInstance("", "Invalid REST query", RestMessageEntity.MessageStatus.FAILURE),
                 headers, HttpStatus.BAD_REQUEST);
     }
-
 }

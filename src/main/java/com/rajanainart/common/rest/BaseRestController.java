@@ -4,8 +4,9 @@ import java.util.Map;
 
 import com.rajanainart.common.config.AppConfig;
 import com.rajanainart.common.config.AppContext;
-import com.rajanainart.common.rest.validator.BaseRestValidator;
 import org.springframework.http.HttpHeaders;
+
+import com.rajanainart.common.rest.validator.BaseRestValidator;
 
 public abstract class BaseRestController {
 
@@ -16,11 +17,31 @@ public abstract class BaseRestController {
         JSON("application/json"),
         XML ("application/xml" ),
         CSV ("application/csv" ),
-        TEXT("application/text");
+        TXT ("application/text"),
+        TEXT("application/text"),
+        XLS ("application/vnd.ms-excel"),
+        XLSX("application/vnd.ms-excel");
 
         private final String text;
 
         HttpContentType(final String text) { this.text = text; }
+
+        @Override
+        public String toString() { return text; }
+    }
+
+    public enum HttpContentDisposition {
+        JSON("attachment;filename=RestReport.json"),
+        XML ("attachment;filename=RestReport.xml" ),
+        CSV ("attachment;filename=RestReport.csv" ),
+        TXT ("attachment;filename=RestReport.txt" ),
+        TEXT("attachment;filename=RestReport.txt" ),
+        XLS ("attachment;filename=RestReport.xls" ),
+        XLSX("attachment;filename=RestReport.xlsx");
+
+        private final String text;
+
+        HttpContentDisposition(final String text) { this.text = text; }
 
         @Override
         public String toString() { return text; }
@@ -39,6 +60,14 @@ public abstract class BaseRestController {
             case CSV:
                 headers.add(HttpHeaders.CONTENT_TYPE, HttpContentType.CSV.toString());
                 headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=RestReport.csv");
+                break;
+            case XLS:
+                headers.add(HttpHeaders.CONTENT_TYPE, HttpContentType.XLS.toString());
+                headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=RestReport.xls");
+                break;
+            case XLSX:
+                headers.add(HttpHeaders.CONTENT_TYPE, HttpContentType.XLSX.toString());
+                headers.add(HttpHeaders.CONTENT_DISPOSITION, "attachment;filename=RestReport.xlsx");
                 break;
             default:
                 headers.add(HttpHeaders.CONTENT_TYPE, HttpContentType.JSON.toString());

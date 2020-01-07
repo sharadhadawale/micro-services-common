@@ -133,9 +133,10 @@ public final class Database implements Closeable {
 
     public <T> T find(Class<T> clazz, String query, Parameter ... parameters) {
         try {
-            String updated = provider.getParameterizedQuery(query);
+            String noInPrs = buildQueryWithoutArrayParams(query, parameters);
+            String updated = provider.getParameterizedQuery(noInPrs);
             Query  q       = session.createNativeQuery(updated, clazz);
-            bindNamedParameters(q, query, parameters);
+            bindNamedParameters(q, noInPrs, parameters);
             return (T)q.getSingleResult();
         }
         catch (SQLException ex) {
@@ -145,9 +146,10 @@ public final class Database implements Closeable {
 
     public <T> List<T> findMultiple(Class<T> clazz, String query, Parameter ... parameters) {
         try {
-            String updated = provider.getParameterizedQuery(query);
+            String noInPrs = buildQueryWithoutArrayParams(query, parameters);
+            String updated = provider.getParameterizedQuery(noInPrs);
             Query  q       = session.createNativeQuery(updated, clazz);
-            bindNamedParameters(q, query, parameters);
+            bindNamedParameters(q, noInPrs, parameters);
             return q.getResultList();
         }
         catch (SQLException ex) {
@@ -180,9 +182,10 @@ public final class Database implements Closeable {
         List<Integer> result = new ArrayList<>();
         session.doWork(
                 (Connection connection) -> {
-                    String updated = provider.getParameterizedQuery(query);
+                    String noInPrs = buildQueryWithoutArrayParams(query, parameters);
+                    String updated = provider.getParameterizedQuery(noInPrs);
                     PreparedStatement statement = connection.prepareStatement(updated);
-                    bindNamedParameters(statement, query, parameters);
+                    bindNamedParameters(statement, noInPrs, parameters);
                     int r = statement.executeUpdate();
                     statement.close();
                     result.add(r);
@@ -216,9 +219,10 @@ public final class Database implements Closeable {
 
     public List<Map<String, Object>> selectAsMapList(String query, Parameter ... parameters) {
         try {
-            String updated = provider.getParameterizedQuery(query);
+            String noInPrs = buildQueryWithoutArrayParams(query, parameters);
+            String updated = provider.getParameterizedQuery(noInPrs);
             Query  q       = session.createNativeQuery(updated);
-            bindNamedParameters(q, query, parameters);
+            bindNamedParameters(q, noInPrs, parameters);
             q.setResultTransformer(AliasToEntityMapResultTransformer.INSTANCE);
             return q.getResultList();
         }
@@ -271,9 +275,10 @@ public final class Database implements Closeable {
     public void selectWithCallback(String query, DataResultSet callback, Parameter ... parameters) {
         session.doWork(
                 (Connection connection) -> {
-                    String updated = provider.getParameterizedQuery(query);
+                    String noInPrs = buildQueryWithoutArrayParams(query, parameters);
+                    String updated = provider.getParameterizedQuery(noInPrs);
                     PreparedStatement statement = connection.prepareStatement(updated);
-                    bindNamedParameters(statement, query, parameters);
+                    bindNamedParameters(statement, noInPrs, parameters);
                     ResultSet rs = statement.executeQuery();
                     long index = 0;
                     while (rs.next())
@@ -286,9 +291,10 @@ public final class Database implements Closeable {
 
     public void selectWithCallback(String query, DataRecord callback, Parameter ... parameters) {
         try {
-            String updated = provider.getParameterizedQuery(query);
+            String noInPrs = buildQueryWithoutArrayParams(query, parameters);
+            String updated = provider.getParameterizedQuery(noInPrs);
             Query  q       = session.createNativeQuery(updated);
-            bindNamedParameters(q, query, parameters);
+            bindNamedParameters(q, noInPrs, parameters);
             q.setResultTransformer(AliasToEntityMapResultTransformer.INSTANCE);
             List<Map<String, Object>> rows = q.getResultList();
             for (Map<String, Object> row : rows)
@@ -370,6 +376,21 @@ public final class Database implements Closeable {
             log.error(String.format("Exception occurred while binding recordset with entity:%s", ex.getMessage()));
         }
         return null;
+    }
+
+    private String buildQueryWithoutArrayParams(String query, Parameter ... parameters) {
+        String result = query;
+        for (Parameter p : parameters) {
+            if (p.getValue().getClass().getName().equalsIgnoreCase(LIST_CLASS_NAME)) {
+                ArrayList params = (ArrayList)p.getValue();
+                if (params.size() > 0)
+                    result = result.replaceAll(String.format("%s%s", Database.QUERY_PARAMETER_REGEX, p.getName()),
+                                               MiscHelper.buildArrayToString(params));
+                else
+                    result = result.replaceAll(String.format("%s%s", Database.QUERY_PARAMETER_REGEX, p.getName()), "''");
+            }
+        }
+        return result;
     }
 
     private static <T> void bindColumn(T instance, Map.Entry<String, Method> column, ResultSet row) {
@@ -519,8 +540,9 @@ public final class Database implements Closeable {
     private static final String DOUBLE_CLASS_NAME  = "java.lang.Double" ;
     private static final String STRING_CLASS_NAME  = "java.lang.String" ;
     private static final String DATE_CLASS_NAME    = "java.util.Date"   ;
+    private static final String LIST_CLASS_NAME    = "java.util.ArrayList";
 
-    public static void bindParameter(Query query, Parameter parameter, int idx) throws SQLException {
+    static void bindParameter(Query query, Parameter parameter, int idx) throws SQLException {
         switch(parameter.getUnderlyingTypeName()) {
             case INTEGER_CLASS_NAME:
             case BYTE_CLASS_NAME:
@@ -547,6 +569,8 @@ public final class Database implements Closeable {
                     dateValue = MiscHelper.convertDateToString(new Date(), BaseEntity.DAFAULT_ORACLE_DATE_FORMAT);
                     query.setString(idx, dateValue);
                 break;
+            case LIST_CLASS_NAME:
+                break;
             case STRING_CLASS_NAME:
             default:
                 if (parameter.getValue() != null)
@@ -557,7 +581,7 @@ public final class Database implements Closeable {
         }
     }
 
-    public static void bindParameter(PreparedStatement statement, Parameter parameter, int idx) throws SQLException {
+    static void bindParameter(PreparedStatement statement, Parameter parameter, int idx) throws SQLException {
         switch(parameter.getUnderlyingTypeName()) {
             case INTEGER_CLASS_NAME:
             case BYTE_CLASS_NAME:
@@ -583,6 +607,8 @@ public final class Database implements Closeable {
                 else
                     dateValue = MiscHelper.convertDateToString(new Date(), BaseEntity.DAFAULT_ORACLE_DATE_FORMAT);
                 statement.setString(idx, dateValue);
+                break;
+            case LIST_CLASS_NAME:
                 break;
             case STRING_CLASS_NAME:
             default:

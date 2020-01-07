@@ -12,17 +12,17 @@ public abstract class BaseEntity {
     public static final String DAFAULT_ORACLE_DATE_FORMAT    = "dd-MMM-yyyy";
     public static final String DEFAULT_NUMERIC_OUTPUT_FORMAT = "%.2f";
 
-    private long id = 0;
+    private double id = 0;
 
     @JsonIgnore
     public Optional<Long> getId() {
         if (id != 0)
-            return Optional.of(id);
+            return Optional.of((long)id);
         return Optional.empty();
     }
 
-    @DbCol(name = "ID", type = BaseMessageColumn.ColumnType.INTEGER)
-    public void setId(long id) {
+    @DbCol(name = "ID", type = BaseMessageColumn.ColumnType.NUMERIC)
+    public void setId(double id) {
         this.id = id;
     }
 

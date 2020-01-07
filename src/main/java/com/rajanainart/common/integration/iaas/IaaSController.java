@@ -5,6 +5,7 @@ import com.rajanainart.common.integration.IntegrationManager;
 import com.rajanainart.common.rest.BaseRestController;
 import com.rajanainart.common.rest.RestMessageEntity;
 import com.rajanainart.common.rest.RestQueryConfig;
+
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -13,6 +14,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.util.HtmlUtils;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 
 @Controller
@@ -21,7 +23,8 @@ public class IaaSController extends BaseRestController {
     @RequestMapping(value = "/{name:[a-zA-Z0-9]*}", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public ResponseEntity<List<BaseEntity>> executeAdhocRestQuery(@PathVariable("name") String name,
-                                                                  @RequestBody IaaSRequest body) {
+                                                                  @RequestBody IaaSRequest body,
+                                                                  HttpServletRequest request) {
         String      escaped = HtmlUtils.htmlEscape(name);
         HttpHeaders headers = buildHttpHeaders(RestQueryConfig.RestQueryContentType.JSON.toString());
 
@@ -29,7 +32,7 @@ public class IaaSController extends BaseRestController {
         if (!msg.equalsIgnoreCase(BaseRestController.SUCCESS))
             return new ResponseEntity<>(RestMessageEntity.getInstanceList("", msg), headers, HttpStatus.OK);
 
-        IntegrationManager manager = new IntegrationManager(body);
+        IntegrationManager manager = new IntegrationManager(request, body);
         Thread             thread  = new Thread(manager);
         thread.setDaemon(true);
         thread.start();

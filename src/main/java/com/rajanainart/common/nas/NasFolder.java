@@ -19,13 +19,19 @@ public final class NasFolder {
     private NasConfig.NasInfo nas ;
     private SmbFile           file;
     private IntegrationLog integrationLog;
+    private String            subFolderName;
+
+    public String getSubFolderName() {
+        return subFolderName != null && !subFolderName.isEmpty() ? subFolderName : "";
+    }
 
     public NasConfig.NasInfo getNasInfo() { return nas ; }
     public SmbFile           getSmbFile() { return file; }
 
-    public NasFolder(NasConfig.NasInfo info) throws IOException {
+    public NasFolder(NasConfig.NasInfo info, String subFolderName) throws IOException {
+        this.subFolderName = subFolderName;
         nas  = info;
-        file = NasFile.buildSmbFile(info, info.getPath());
+        file = NasFile.buildSmbFile(info, FileHelper.combinePaths("/", info.getPath(), getSubFolderName()));
 
         if (file.exists() && !file.isDirectory())
             throw new IOException(String.format("%s is not a directory", info.getPath()));
@@ -81,7 +87,7 @@ public final class NasFolder {
         for (String f : files) {
             try {
                 SmbFile smb = NasFile.buildSmbFile(nas, FileHelper.combinePaths("/", nas.getPath(), f));
-                if (smb.isFile()) list.add(new NasFile(nas, smb));
+                if (smb.isFile()) list.add(new NasFile(nas, "", smb));
             }
             catch (IOException ex) {
                 logger.warn(String.format("Error while smb listing the files: %s", ex.getMessage()));
@@ -103,12 +109,9 @@ public final class NasFolder {
 
     private void copyAllFiles(NasConfig.NasInfo target, List<NasFile> files, boolean replace) {
         for (NasFile f : files) {
-            String  parent   = target.getPath();
-            String  fileName = f.getSmbFile().getName();
-            String  path     = FileHelper.combinePaths("/", parent, fileName);
             try {
                 log(String.format("Copying file:%s", f.getSmbFile().getName()));
-                NasFile nTarget = new NasFile(target, path);
+                NasFile nTarget = new NasFile(target, "", f.getSmbFile().getName());
                 if (nTarget.getSmbFile().exists() && replace) nTarget.delete();
                 f.copy(nTarget);
                 log(String.format("Copying file:%s is complete", f.getSmbFile().getName()));
@@ -117,6 +120,10 @@ public final class NasFolder {
                 ex.printStackTrace();
             }
         }
+    }
+
+    public void createFolder() throws SmbException {
+        if (!file.exists()) file.mkdir();
     }
 
     private void log(String msg) {
@@ -166,11 +173,8 @@ public final class NasFolder {
 
         @Override
         public void run() {
-            String  parent   = info.getPath();
-            String  fileName = file.getSmbFile().getName();
-            String  path     = FileHelper.combinePaths("/", parent, fileName);
             try {
-                NasFile nTarget = new NasFile(info, path);
+                NasFile nTarget = new NasFile(info, "", file.getSmbFile().getName());
                 if (nTarget.getSmbFile().exists() && replace) nTarget.delete();
                 file.copy(nTarget);
             }

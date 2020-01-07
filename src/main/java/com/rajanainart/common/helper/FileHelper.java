@@ -37,6 +37,12 @@ public final class FileHelper {
         return files;
     }
 
+    public static String getFileExtension(String fileName) {
+        if(fileName.lastIndexOf(".") != -1 && fileName.lastIndexOf(".") != 0)
+            return fileName.substring(fileName.lastIndexOf(".")+1);
+        return "";
+    }
+
     public static String combinePaths(String separator, String ... paths) {
         StringBuilder result = new StringBuilder();
         for (String path : paths)

@@ -9,12 +9,14 @@ import com.rajanainart.common.config.BaseConfig;
 import com.rajanainart.common.data.Database;
 import com.rajanainart.common.helper.XmlNodeHelper;
 import com.rajanainart.common.integration.iaas.IaaSRequest;
-import com.rajanainart.common.config.XmlConfig;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 import org.w3c.dom.Node;
 
+import com.rajanainart.common.config.XmlConfig;
 import com.rajanainart.common.data.BaseMessageColumn;
 import com.rajanainart.common.data.BaseMessageTable;
 
@@ -28,7 +30,7 @@ public class RestQueryConfig implements XmlConfig, BaseMessageTable {
     public enum RestQueryUsedFor { RESULT, META }
 
     public enum RestQueryContentType {
-        XML, JSON, CSV, TEXT;
+        XML, JSON, CSV, TEXT, XLS, XLSX;
 
         @Override
         public String toString() {
@@ -96,6 +98,7 @@ public class RestQueryConfig implements XmlConfig, BaseMessageTable {
         return pageSize.isPresent() ? pageSize.get() : DEFAULT_PAGE_SIZE;
     }
 
+    @JsonIgnore
     public ArrayList<BaseMessageColumn> getColumns() {
         ArrayList<BaseMessageColumn> list = new ArrayList<>();
         for (FieldConfig c : fields)
@@ -216,9 +219,13 @@ public class RestQueryConfig implements XmlConfig, BaseMessageTable {
         public String   getFormat     () { return format   ; }
         public String   getSelectQuery() { return query    ; }
         public String   getTargetField() { return target   ; }
+        @JsonProperty("mandatory")
         public boolean  getIsMandatory() { return mandatory; }
+        @JsonProperty("editable")
         public boolean  getIsEditable () { return editable ; }
+        @JsonProperty("visible")
         public boolean  getIsVisible  () { return visible  ; }
+        @JsonProperty("pk")
         public boolean  getIsPk       () { return isPk     ; }
         public boolean  getAutoIncr   () { return autoIncr ; }
         public int      getIndex      () { return -1; }

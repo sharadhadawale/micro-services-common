@@ -2,20 +2,20 @@ package com.rajanainart.common.rest;
 
 import java.sql.ResultSet;
 import java.sql.SQLIntegrityConstraintViolationException;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
+import com.rajanainart.common.data.BaseMessageColumn;
 import com.rajanainart.common.helper.ReflectionHelper;
 import com.rajanainart.common.rest.validator.DataTypeValidator;
 import com.rajanainart.common.rest.validator.LogicalValidator;
 import com.rajanainart.common.rest.validator.MandatoryValidator;
+import com.rajanainart.common.data.QueryExecutor;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 import com.rajanainart.common.data.BaseEntity;
 import com.rajanainart.common.data.Database;
-import com.rajanainart.common.data.QueryExecutor;
 
 import javax.persistence.PersistenceException;
 
@@ -25,13 +25,13 @@ public class DefaultEntityHandler implements BaseEntityHandler {
 
     private RestQueryConfig  config  ;
     private RestQueryRequest request ;
-    private QueryExecutor    executor;
+    private QueryExecutor executor;
     private Database         db      ;
 
     public RestQueryConfig  getRestQueryConfig () { return config  ; }
     public RestQueryRequest getRestQueryRequest() { return request ; }
-    protected QueryExecutor	getQueryExecutor   () { return executor; }
-    protected Database	    getUnderlyingDb	   () { return db 	   ; }
+    public QueryExecutor	getQueryExecutor   () { return executor; }
+    public Database	        getUnderlyingDb	   () { return db 	   ; }
 
     public <T extends BaseEntity> void setup(Class<T> clazz, RestQueryConfig config, RestQueryRequest request, Database db) {
         this.config   = config;
@@ -41,11 +41,11 @@ public class DefaultEntityHandler implements BaseEntityHandler {
     }
 
     private String validate(Map<String, String> params, RestQueryConfig.ValidationExecutionType type) {
-        String success = BaseRestController.REST_DATA_VALIDATORS.get(MandatoryValidator.VALIDATOR_KEY).validate(config, type, params);
+        String success = BaseRestController.REST_DATA_VALIDATORS.get(MandatoryValidator.VALIDATOR_KEY).validate(config, type, params, request.getParamsWithObject());
         if (success.equals(BaseRestController.SUCCESS))
-            success = BaseRestController.REST_DATA_VALIDATORS.get(DataTypeValidator.VALIDATOR_KEY).validate(config, type, params);
+            success = BaseRestController.REST_DATA_VALIDATORS.get(DataTypeValidator.VALIDATOR_KEY).validate(config, type, params, request.getParamsWithObject());
         if (success.equals(BaseRestController.SUCCESS))
-            success = BaseRestController.REST_DATA_VALIDATORS.get(LogicalValidator.VALIDATOR_KEY).validate(config, type, params);
+            success = BaseRestController.REST_DATA_VALIDATORS.get(LogicalValidator.VALIDATOR_KEY).validate(config, type, params, request.getParamsWithObject());
         return success;
     }
 
@@ -114,6 +114,41 @@ public class DefaultEntityHandler implements BaseEntityHandler {
                             }
                     );
         return executePostAction(clazz, list);
+    }
+
+    public List<Map<String, Object>> fetchRestQueryAsMap() {
+        List<Map<String, Object>> parent = new ArrayList<>();
+        parent.addAll(executor.selectAsMapList());
+
+        for (RestQueryConfig.FieldConfig field : config.getFields()) {
+            if (field.getType() == BaseMessageColumn.ColumnType.SUBLIST) {
+                List<Map<String, Object>> child = executor.getUnderlyingDb().selectAsMapList(field.getSelectQuery());
+                bindResultSet(parent, child, field);
+            } else if (field.getType() == BaseMessageColumn.ColumnType.SELECT) {
+                if (parent.size() == 0) parent.add(new HashMap<>());
+
+                List<Map<String, Object>> child = executor.getUnderlyingDb().selectAsMapList(field.getSelectQuery());
+                String key = String.format("%s_array", field.getId());
+                parent.get(0).put(key, child);
+            }
+        }
+        return parent;
+    }
+
+    public void bindResultSet(List<Map<String, Object>> parent, List<Map<String, Object>> child, RestQueryConfig.FieldConfig link) {
+        String key = String.format("%s_array", link.getId());
+        for (Map<String, Object> pr : parent) {
+            if (pr.getOrDefault(key, null) == null)
+                pr.put(key, new ArrayList<>());
+            for (Map<String, Object> cr : child) {
+                if (pr.containsKey(link.getId()) && cr.containsKey(link.getId())) {
+                    String pid = String.valueOf(pr.get(link.getId()));
+                    String cid = String.valueOf(cr.get(link.getId()));
+                    if (pid.equalsIgnoreCase(cid))
+                        ((List) pr.get(key)).add(cr);
+                }
+            }
+        }
     }
 
     protected <T extends BaseEntity> List<T> executePostAction(Class<T> clazz, List<T> input) {

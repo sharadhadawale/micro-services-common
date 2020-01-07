@@ -18,8 +18,8 @@ public class RestQueryRequest {
     @JsonInclude private ArrayList<Map<String, Object>> listParams = new ArrayList<>();
 
     public ArrayList<QueryFilter> getFilter () { return filter; }
-    public Map<String, String> 	   getParams () { return params; }
-    public List<Map<String, String>> getData() { return data; }
+    public Map<String, String> 	   getParams() { return params; }
+    public List<Map<String, String>> getData() { return data  ; }
 
     public ArrayList<Map<String, Object>> getListParams() {
         return listParams;
@@ -39,6 +39,10 @@ public class RestQueryRequest {
         return Integer.parseInt(params.get(HTTP_CURRENT_PAGE_KEY));
     }
 
+    public boolean hasCurrentPageNumber() {
+        return params.containsKey(HTTP_CURRENT_PAGE_KEY);
+    }
+
     public Optional<Integer> getPageSize() {
         if (!params.containsKey(HTTP_PAGE_SIZE_KEY))
             return Optional.empty();
@@ -51,5 +55,15 @@ public class RestQueryRequest {
 
     public void setParamsWithObject(Map<String, Object> paramsWithObject) {
         this.paramsWithObject = paramsWithObject;
+    }
+
+    public String buildConditionFromParams() {
+        StringBuilder condition = new StringBuilder();
+        condition.append("1=1");
+
+        for (Map.Entry<String, String> p : params.entrySet())
+            condition.append(String.format(" AND %s = '%s'", p.getKey(), p.getValue()));
+
+        return condition.toString();
     }
 }

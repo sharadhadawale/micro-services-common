@@ -9,14 +9,14 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import com.rajanainart.common.upload.task.UploadTask;
-import com.rajanainart.common.upload.validator.DataValidator;
-import org.springframework.web.multipart.MultipartFile;
-
 import com.rajanainart.common.config.AppConfig;
 import com.rajanainart.common.config.AppContext;
-import com.rajanainart.common.data.Database;
 import com.rajanainart.common.helper.MiscHelper;
+import org.springframework.web.multipart.MultipartFile;
+
+import com.rajanainart.common.data.Database;
+import com.rajanainart.common.upload.task.UploadTask;
+import com.rajanainart.common.upload.validator.DataValidator;
 
 public class Upload {
     public final static String SUCCESS = "OK";
@@ -83,7 +83,7 @@ public class Upload {
         for (Map<String, Object> record : records) {
             if (current++ == 0) continue;
             index++;
-            if (MiscHelper.isEmptyMap(record)) { 
+            if (MiscHelper.isEmptyMap(record)) {
             	indexToRemove.add(index);
             	continue;
             }

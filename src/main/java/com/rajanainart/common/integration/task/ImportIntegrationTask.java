@@ -78,7 +78,7 @@ public class ImportIntegrationTask implements IntegrationTask {
         executePrePostTasks(context.getTaskConfig().getPreExecValue(), transform);
 
         context.getLogger().log("Fetching records from source");
-        QueryExecutor  executor  = new QueryExecutor(config, context.getRestQueryRequest(), context.getSourceDb());
+        QueryExecutor executor  = new QueryExecutor(config, context.getRestQueryRequest(), context.getSourceDb());
         long           startTime = System.currentTimeMillis();
         List<Long> totalRecords  = new ArrayList<>();
         List<Map<String, Object>> records     = new ArrayList<>();
@@ -172,7 +172,7 @@ public class ImportIntegrationTask implements IntegrationTask {
             String deleteQuery = qBuilder.delete(config, context.getRestQueryRequest().getParams());
             if (!deleteQuery.isEmpty()) {
                 context.getLogger().log("Deleting existing rows");
-                log.info(deleteQuery);
+                //log.info(deleteQuery);
                 context.getTargetDb().executeQueryWithJdbc(deleteQuery);
             }
         }

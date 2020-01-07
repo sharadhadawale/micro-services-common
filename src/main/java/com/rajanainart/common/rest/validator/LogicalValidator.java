@@ -14,7 +14,7 @@ public class LogicalValidator implements BaseRestValidator {
 
     public static final String VALIDATOR_KEY = "logical-validator";
 
-    public String validate(RestQueryConfig config, RestQueryConfig.ValidationExecutionType type, Map<String, String> params) {
+    public String validate(RestQueryConfig config, RestQueryConfig.ValidationExecutionType type, Map<String, String> params, Map<String, Object> objectParams) {
         StringBuilder message = new StringBuilder();
         for (RestQueryConfig.LogicalValidator v : config.getLogicalValidators()) {
             if (v.getExecutionType() != type) continue;

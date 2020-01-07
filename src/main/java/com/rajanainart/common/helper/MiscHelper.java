@@ -10,6 +10,11 @@ public class MiscHelper {
     private MiscHelper() {}
 
     //for fortify fix
+    public static boolean isValidName(String value) {
+        return value.matches("[a-zA-Z0-9-_ ]*");
+    }
+
+    //for fortify fix
     public static Map<String, String> paramsValidated(Map<String, String> params) {
         Map<String, String> result = new HashMap<>();
         for (Map.Entry<String, String> entry : params.entrySet()) {
@@ -35,6 +40,16 @@ public class MiscHelper {
         DateFormat df = new SimpleDateFormat("MMddyyyy-HHmmss");
         Date now = getSystemDateTime();
         return df.format(now);
+    }
+
+    public static String buildArrayToString(ArrayList input) {
+        List<String> results = new ArrayList<>();
+        results.add("");
+        input.forEach(x -> {
+            String temp = results.get(0).isEmpty() ? String.format("'%s'", x) : String.format("%s, '%s'", results.get(0), x);
+            results.set(0, temp);
+        });
+        return results.get(0);
     }
 
     public static boolean isEmptyMap(Map<String, Object> map) {

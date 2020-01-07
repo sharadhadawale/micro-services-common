@@ -21,7 +21,7 @@ public class NoSqlConfig implements XmlConfig {
     public enum NoSqlSourceType { ELASTICSEARCH }
 
     private String id, name;
-    private String userName = "", password = "", surl = "";
+    private String userName = "", password, surl = "";
     private NoSqlSourceType type = NoSqlSourceType.ELASTICSEARCH;
 
     public String getId      () { return id      ; }

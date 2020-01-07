@@ -6,6 +6,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.*;
 
+import com.rajanainart.common.rest.RestQueryConfig;
 import org.apache.poi.hssf.usermodel.HSSFWorkbook;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.CellStyle;
@@ -14,8 +15,6 @@ import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.web.multipart.MultipartFile;
-
-import com.rajanainart.common.rest.RestQueryConfig;
 
 public class ExcelDocument implements Closeable {
 
@@ -114,26 +113,27 @@ public class ExcelDocument implements Closeable {
                 if (config.getFields().size() > 0) {
                     for (RestQueryConfig.FieldConfig f : config.getFields()) {
                         if (!f.getIsVisible()) continue;
-                        if(record.get(f.getId()).toString().isEmpty()) {
+                        String id = f.getId().toLowerCase(Locale.ENGLISH);
+                        if(String.valueOf(record.get(id)).isEmpty()) {
                             row1.createCell(cellNumber++).setCellValue("");
                             continue;
                         }
                         switch (f.getType()) {
                             case PERCENTAGE:
-                                row1.createCell(cellNumber++).setCellValue(Double.parseDouble(record.get(f.getId()).toString()));
+                                row1.createCell(cellNumber++).setCellValue(Double.parseDouble(String.valueOf(record.get(id))));
                                 CellStyle per =  workbook.createCellStyle();
                                 per.setDataFormat(workbook.createDataFormat().getFormat("0%"));
                                 row1.setRowStyle(per);
                                 break;
                             case INTEGER:
                             case NUMERIC:
-                                row1.createCell(cellNumber++).setCellValue(Double.parseDouble(record.get(f.getId()).toString()));
+                                row1.createCell(cellNumber++).setCellValue(Double.parseDouble(String.valueOf(record.get(id))));
                                 CellStyle style =  workbook.createCellStyle();
                                 style.setDataFormat(workbook.createDataFormat().getFormat("0"));
                                 row1.setRowStyle(style);
                                 break;
                             case TEXT:
-                                row1.createCell(cellNumber++).setCellValue(String.valueOf(record.get(f.getId())));
+                                row1.createCell(cellNumber++).setCellValue(String.valueOf(record.get(id)));
                                 break;
                         }
                     }

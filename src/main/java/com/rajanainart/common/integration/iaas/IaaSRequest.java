@@ -2,17 +2,21 @@ package com.rajanainart.common.integration.iaas;
 
 import com.rajanainart.common.integration.IntegrationConfig;
 import com.rajanainart.common.rest.BaseRestController;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 
 import java.util.Locale;
 
 public class IaaSRequest {
-    private String type   = "";
-    private String source = "";
-    private String target = "";
-    private String query  = "";
-    private String pkCol  = "";
-    private String targetTable = "";
-    private NoSql  nosql  = null;
+    @JsonIgnore private int dummy;
+
+    @JsonInclude private String type   = "";
+    @JsonInclude private String source = "";
+    @JsonInclude private String target = "";
+    @JsonInclude private String query  = "";
+    @JsonInclude private String pkCol  = "";
+    @JsonInclude private String targetTable = "";
+    @JsonInclude private NoSql  nosql  = null;
 
     public void setSource(String value) { this.source = value; }
     public void setTarget(String value) { this.target = value; }

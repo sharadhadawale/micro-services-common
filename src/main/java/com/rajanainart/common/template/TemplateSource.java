@@ -1,15 +1,10 @@
-package com.rajanainart.common.data;
+package com.rajanainart.common.template;
 
 import java.lang.annotation.ElementType;
-
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
-@Target(ElementType.METHOD)
-public @interface DbCol {
-    String name();
-    String display() default  "";
-    BaseMessageColumn.ColumnType type();
-}
+@Target(ElementType.TYPE)
+public @interface TemplateSource { }

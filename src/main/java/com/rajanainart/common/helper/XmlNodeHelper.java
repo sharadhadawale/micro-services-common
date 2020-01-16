@@ -1,5 +1,6 @@
 package com.rajanainart.common.helper;
 
+import java.io.InputStream;
 import java.util.Date;
 import java.io.File;
 import java.io.IOException;
@@ -11,7 +12,6 @@ import java.util.Map;
 import javax.xml.namespace.NamespaceContext;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.xpath.XPath;
 import javax.xml.xpath.XPathConstants;
 import javax.xml.xpath.XPathExpressionException;
@@ -25,6 +25,21 @@ import org.xml.sax.SAXException;
 
 public final class XmlNodeHelper {
     private XmlNodeHelper() {}
+
+    private static DocumentBuilderFactory factory = null;
+    private static DocumentBuilder        builder = null;
+    static {
+        factory = DocumentBuilderFactory.newInstance();
+        try {
+            factory.setFeature("http://xml.org/sax/features/external-general-entities"  , false);
+            factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
+            factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl"   , true );
+            builder = factory.newDocumentBuilder();
+        }
+        catch (Exception ex) {
+            ex.printStackTrace();
+        }
+    }
 
     public static String getAttributeValue(Node node, String attribute) {
         Node n = null;
@@ -112,29 +127,25 @@ public final class XmlNodeHelper {
         return map;
     }
 
-    public static Document buildXmlDocumentFromString(String xml)
-            throws ParserConfigurationException, SAXException, IOException {
-        DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-        factory.setFeature("http://xml.org/sax/features/external-general-entities", false);
-        factory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-        factory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-        DocumentBuilder builder = factory.newDocumentBuilder();
+    public static Document buildXmlDocumentFromString(String xml) throws SAXException, IOException {
         Document document = builder.parse(new InputSource(new StringReader(xml)));
         document.getDocumentElement().normalize();
         return document;
     }
 
-    public static Document buildXmlDocumentFromFilePath(String xmlPath)
-            throws ParserConfigurationException, SAXException, IOException {
+    public static Document buildXmlDocumentFromFilePath(String xmlPath) throws SAXException, IOException {
         File file = new File(xmlPath);
-        DocumentBuilderFactory builderFactory = DocumentBuilderFactory.newInstance();
-        builderFactory.setFeature("http://xml.org/sax/features/external-general-entities", false);
-        builderFactory.setFeature("http://xml.org/sax/features/external-parameter-entities", false);
-        builderFactory.setFeature("http://apache.org/xml/features/disallow-doctype-decl", true);
-        DocumentBuilder builder = builderFactory.newDocumentBuilder();
         Document document = builder.parse(file);
         document.getDocumentElement().normalize();
         return document;
+    }
+
+    public static Document buildXmlDocumentFromResource(String resourceName) throws SAXException, IOException {
+        try (InputStream stream = XmlNodeHelper.class.getClassLoader().getResourceAsStream(resourceName)) {
+            Document document = builder.parse(stream);
+            document.getDocumentElement().normalize();
+            return document;
+        }
     }
 
     public static NodeList queryDocumentForNodes(Document document, String query) throws XPathExpressionException {

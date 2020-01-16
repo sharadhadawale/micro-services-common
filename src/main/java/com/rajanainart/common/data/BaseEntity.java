@@ -6,6 +6,7 @@ import java.util.Optional;
 
 import com.rajanainart.common.helper.ReflectionHelper;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.springframework.stereotype.Component;
 
 public abstract class BaseEntity {
     public static final String DAFAULT_DATE_OUTPUT_FORMAT    = "MM/dd/yyyy";
@@ -21,6 +22,22 @@ public abstract class BaseEntity {
         return Optional.empty();
     }
 
+    public Object getValue(String fieldName) {
+        Map<String, Method> methods = getAnnotatedGetMethods();
+        for (Map.Entry<String, Method> method : methods.entrySet()) {
+            String[] names = method.getKey().split("__");
+            if (!names[0].equalsIgnoreCase(fieldName)) continue;
+
+            try {
+                return method.getValue().invoke(this);
+            }
+            catch (Exception ex) {
+                ex.printStackTrace();
+            }
+        }
+        return null;
+    }
+
     @DbCol(name = "ID", type = BaseMessageColumn.ColumnType.NUMERIC)
     public void setId(double id) {
         this.id = id;
@@ -34,5 +51,14 @@ public abstract class BaseEntity {
     @JsonIgnore
     public Map<String, Method> getAnnotatedGetMethods() {
         return ReflectionHelper.getAnnotatedGetMethods(this.getClass());
+    }
+
+    public String getBeanName() {
+        Component annotation = getClass().getAnnotation(Component.class);
+        return annotation != null ? annotation.value() : "";
+    }
+
+    public boolean isJpaEntity() {
+        return !ReflectionHelper.getJpaTableName(getClass()).isEmpty();
     }
 }

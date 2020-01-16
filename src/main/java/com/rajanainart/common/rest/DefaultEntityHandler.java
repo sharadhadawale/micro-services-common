@@ -9,13 +9,13 @@ import com.rajanainart.common.helper.ReflectionHelper;
 import com.rajanainart.common.rest.validator.DataTypeValidator;
 import com.rajanainart.common.rest.validator.LogicalValidator;
 import com.rajanainart.common.rest.validator.MandatoryValidator;
-import com.rajanainart.common.data.QueryExecutor;
 import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 import com.rajanainart.common.data.BaseEntity;
 import com.rajanainart.common.data.Database;
+import com.rajanainart.common.data.QueryExecutor;
 
 import javax.persistence.PersistenceException;
 
@@ -25,7 +25,7 @@ public class DefaultEntityHandler implements BaseEntityHandler {
 
     private RestQueryConfig  config  ;
     private RestQueryRequest request ;
-    private QueryExecutor executor;
+    private QueryExecutor    executor;
     private Database         db      ;
 
     public RestQueryConfig  getRestQueryConfig () { return config  ; }
@@ -54,7 +54,8 @@ public class DefaultEntityHandler implements BaseEntityHandler {
     }
 
     public String preValidateRestEntity(RestQueryConfig config, RestQueryRequest request) {
-        this.config = config;
+        this.config  = config;
+        this.request = request;
         return validate(request.getParams(), RestQueryConfig.ValidationExecutionType.PRE_DATA_FETCH);
     }
 

@@ -4,7 +4,10 @@ import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.lang.reflect.Parameter;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import com.rajanainart.common.config.AppContext;
@@ -27,9 +30,43 @@ public class ReflectionHelper {
     private static Map<String, Map<String, Method>> methods    = new HashMap<>();
     private static Map<String, Map<String, Method>> getMethods = new HashMap<>();
 
+    public static <T extends BaseEntity, A extends Annotation> boolean isTypeAnnotatedWith(Class<T> clazz, Class<A> annotation) {
+        A annotated = clazz.getAnnotation(annotation);
+        return annotated != null;
+    }
+
+    public static List<String> getAllClassMethods(Class<?> ... classes) {
+        List<String> result = new ArrayList<>();
+
+        for (Class<?> clazz : classes) {
+            for (Method method : clazz.getDeclaredMethods()) {
+                StringBuilder builder = new StringBuilder();
+                int index = 0;
+                builder.append(String.format("%s.%s", clazz.getSimpleName(), method.getName())).append("(");
+                for (Parameter p : method.getParameters())
+                    builder.append(String.format("%s%s", index++!=0 ? ", " : "", p.getType().getName()));
+                builder.append(")");
+                result.add(builder.toString());
+            }
+        }
+        return result;
+    }
+
     public static String getJpaTableName(Class<?> clazz) {
         Table annotation = clazz.getAnnotation(Table.class);
         return annotation != null ? annotation.name() : "";
+    }
+
+    public static Map<String, Field> getJpaTableColumns(Class<?> clazz) {
+        Map<String, Field> fields = new HashMap<>();
+        for (Field field : clazz.getDeclaredFields()) {
+            Column column = field.getDeclaredAnnotation(Column.class);
+            if (column != null) {
+                field.setAccessible(true);
+                fields.put(column.name(), field);
+            }
+        }
+        return fields;
     }
 
     public static String getJpaCondition(Class<?> clazz, Map<String, Object> conditions) {
@@ -147,8 +184,12 @@ public class ReflectionHelper {
                 if (method.getModifiers() != Modifier.PUBLIC) continue;
 
                 DbCol column = method.getAnnotation(DbCol.class);
-                if (column  != null)
-                    m.put(column.name(), method);
+                if (column  != null) {
+                    String name = column.name();
+                    if (!column.display().isEmpty())
+                        name = String.format("%s__%s", column.name(), column.display());
+                    m.put(name, method);
+                }
             }
             getMethods.put(clazz.getName(), m);
         }

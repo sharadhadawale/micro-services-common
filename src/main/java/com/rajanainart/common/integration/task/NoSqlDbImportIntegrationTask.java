@@ -32,7 +32,7 @@ public class NoSqlDbImportIntegrationTask extends ImportIntegrationTask {
             return;
         }
 
-        NoSqlConfig noSqlConfig = IntegrationManager.NOSQL_CONFIGS.getOrDefault(context.getTaskConfig().getTarget(), null);
+        NoSqlConfig           noSqlConfig = IntegrationManager.NOSQL_CONFIGS.getOrDefault(context.getTaskConfig().getTarget(), null);
         BaseNoSqlDataProvider nosql       = null;
         if (noSqlConfig == null) {
             String msg = String.format("NoSql Db configuration is not found %s", context.getTaskConfig().getTarget());

@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 public abstract class BaseJavaIntegrationTask {
-    private IntegrationContext context;
+    private IntegrationContext     context;
     private IntegrationTask.Status status = IntegrationTask.Status.PROCESSING;
     private Map<String, String>    params = new HashMap<>();
 

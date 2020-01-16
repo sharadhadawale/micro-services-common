@@ -1,41 +1,55 @@
 package com.rajanainart.common.mail;
 
-import java.util.Properties;
+import com.rajanainart.common.config.XmlConfig;
+import com.rajanainart.common.helper.XmlNodeHelper;
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
+import org.springframework.context.annotation.Scope;
+import org.springframework.stereotype.Component;
+import org.w3c.dom.Node;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.JavaMailSenderImpl;
+import java.util.Arrays;
+import java.util.List;
 
-@Configuration
-public class MailConfig {
+@Component("mail-config")
+@Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
+public class MailConfig  implements XmlConfig {
+    private String id  ;
+    private String name;
 
-	private static final Logger log = LoggerFactory.getLogger(MailConfig.class);
+    private String from = "";
+    private String to   = "";
+    private String body = "";
+    private String subject;
 
-	@Value("${email.host}") private String  host;
-	@Value("${email.port}") private Integer port;
+    public String getId     () { return id     ; }
+    public String getName   () { return name   ; }
+    public String getFrom   () { return from   ; }
+    public String getTo     () { return to     ; }
+    public String getBody   () { return body   ; }
+    public String getSubject() { return subject; }
 
-	@Bean
-	public JavaMailSender javaMailService() {
-		JavaMailSenderImpl javaMailSender = new JavaMailSenderImpl();
-		log.info("the email host is " + host);
-		log.info("the email port is " + port);
-		javaMailSender.setHost(host);
-		javaMailSender.setPort(port);
-		javaMailSender.setJavaMailProperties(getMailProperties());
+    public List<String> getToList() { return Arrays.asList(to.split(",")); }
 
-		return javaMailSender;
-	}
+    @Override
+    public synchronized void configure(Node node) {
+        synchronized (this) {
+            id     = XmlNodeHelper.getAttributeValue(node, "id"  );
+            name   = XmlNodeHelper.getAttributeValue(node, "name");
 
-	private Properties getMailProperties() {
-		Properties properties = new Properties();
-		properties.setProperty("mail.transport.protocol", "smtp");
-		properties.setProperty("mail.smtp.auth", "false");
-		properties.setProperty("mail.smtp.starttls.enable", "false");
-		properties.setProperty("mail.debug", "false");
-		return properties;
-	}
+            Node n = XmlNodeHelper.getChildNode(node, "from");
+            if (n != null) from = XmlNodeHelper.getNodeValue(n);
+
+            n = XmlNodeHelper.getChildNode(node, "to");
+            if (n != null) to = XmlNodeHelper.getNodeValue(n);
+
+            n = XmlNodeHelper.getChildNode(node, "subject");
+            if (n != null) subject = XmlNodeHelper.getNodeValue(n);
+
+            n = XmlNodeHelper.getChildNode(node, "body");
+            if (n != null) body = XmlNodeHelper.getNodeValue(n);
+
+            if (id.isEmpty() || from.isEmpty())
+                throw new NullPointerException("Configuration values for 'id' attribute and 'from' node value are mandatory");
+        }
+    }
 }

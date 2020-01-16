@@ -17,7 +17,7 @@ import java.util.Map;
 @Component("process-config")
 @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
 public class IntegrationConfig implements XmlConfig {
-    public enum TaskType      { IMPORT, PROCEDURE, JAVA, MESSAGING, SPARK, NAS, NOSQL_IMPORT }
+    public enum TaskType      { IMPORT, PROCEDURE, JAVA, MESSAGING, SPARK, NAS, NOSQL_IMPORT, MAIL, CRON_SCHEDULER }
     public enum ExecLevel     { ROOT, DEPENDENT }
     public enum TransformType { NONE, FOREIGN_KEY, CUSTOM }
 

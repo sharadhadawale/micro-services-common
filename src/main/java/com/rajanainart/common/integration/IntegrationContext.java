@@ -14,7 +14,7 @@ import java.io.Closeable;
 import java.util.Map;
 
 public class IntegrationContext implements Closeable {
-    private Map<String, IntegrationTask      > tasks  = null;
+    private Map<String, IntegrationTask> tasks  = null;
     private Map<String, MqMessageHandler     > mqs    = null;
     private Map<String, BaseNoSqlDataProvider> nosqls = null;
 
@@ -23,14 +23,14 @@ public class IntegrationContext implements Closeable {
     private Database sourceDb = null;
     private Database targetDb = null;
     private String   task;
-    private RestQueryRequest request    = null;
+    private RestQueryRequest    request    = null;
     private IntegrationLog      logger     = null;
     private Map<String, MultipartFile> uploadFiles = null;
     private HttpServletRequest servletRequest;
 
     public IntegrationConfig   getConfig          () { return config ; }
-    public RestQueryRequest    getRestQueryRequest() { return request; }
     public IntegrationLog      getLogger          () { return logger ; }
+    public RestQueryRequest    getRestQueryRequest() { return request; }
     public String              getTask            () { return task   ; }
     public Map<String, MultipartFile> getUploadFiles() { return uploadFiles; }
 
@@ -113,5 +113,9 @@ public class IntegrationContext implements Closeable {
         if (localDb  != null) localDb .close();
         if (sourceDb != null) sourceDb.close();
         if (targetDb != null) targetDb.close();
+
+        localDb  = null;
+        sourceDb = null;
+        targetDb = null;
     }
 }

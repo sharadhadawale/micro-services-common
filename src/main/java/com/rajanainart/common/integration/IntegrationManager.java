@@ -6,6 +6,7 @@ import com.rajanainart.common.data.nosql.NoSqlConfig;
 import com.rajanainart.common.helper.MiscHelper;
 import com.rajanainart.common.integration.iaas.IaaSRequest;
 import com.rajanainart.common.integration.task.IntegrationTask;
+import com.rajanainart.common.mail.MailConfig;
 import com.rajanainart.common.mq.MqConfig;
 import com.rajanainart.common.nas.NasConfig;
 import com.rajanainart.common.rest.BaseRestController;
@@ -18,17 +19,18 @@ import java.util.Map;
 
 public class IntegrationManager implements Runnable {
 
-    public final static Map<String, BaseTransform> TRANSFORMS          = AppContext.getBeansOfType(BaseTransform.class);
+    public final static Map<String, BaseTransform    > TRANSFORMS          = AppContext.getBeansOfType(BaseTransform.class);
     public final static Map<String, IntegrationConfig> INTEGRATION_CONFIGS = AppConfig.getBeansFromConfig("/integration-framework/process-config", "process-config", "id");
-    public final static Map<String, NoSqlConfig> NOSQL_CONFIGS       = AppConfig.getBeansFromConfig("/nosql-configs/nosql", "nosql-config", "id");
-    public final static Map<String, MqConfig         > MQ_CONFIGS          = AppConfig.getBeansFromConfig("/mq-configs/mq"  , "mq-config" , "id");
-    public final static Map<String, NasConfig        > NAS_CONFIGS         = AppConfig.getBeansFromConfig("/nas-configs/nas", "nas-config", "id");
+    public final static Map<String, NoSqlConfig      > NOSQL_CONFIGS       = AppConfig.getBeansFromConfig("/nosql-configs/nosql", "nosql-config", "id");
+    public final static Map<String, MqConfig         > MQ_CONFIGS          = AppConfig.getBeansFromConfig("/mq-configs/mq"      , "mq-config"   , "id");
+    public final static Map<String, NasConfig        > NAS_CONFIGS         = AppConfig.getBeansFromConfig("/nas-configs/nas"    , "nas-config"  , "id");
+    public final static Map<String, MailConfig       > MAIL_CONFIGS        = AppConfig.getBeansFromConfig("/mail-configs/mail"  , "mail-config" , "id");
 
     private IntegrationConfig  config  = null;
     private IntegrationContext context = null;
     private IntegrationLog     logger  = null;
     private HttpServletRequest servletRequest;
-    private RestQueryRequest request = new RestQueryRequest();
+    private RestQueryRequest   request = new RestQueryRequest();
 
     public IntegrationConfig  getConfig () { return config ; }
     public IntegrationContext getContext() { return context; }
@@ -92,7 +94,7 @@ public class IntegrationManager implements Runnable {
 
     @Override
     public void run() {
-        IntegrationTask        task   = null;
+        IntegrationTask task   = null;
         IntegrationTask.Status status = IntegrationTask.Status.PROCESSING;
         for (IntegrationConfig.TaskConfig t : config.getTasks()) {
             try {

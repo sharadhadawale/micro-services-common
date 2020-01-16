@@ -4,9 +4,8 @@ import java.util.Map;
 
 import com.rajanainart.common.config.AppConfig;
 import com.rajanainart.common.config.AppContext;
-import org.springframework.http.HttpHeaders;
-
 import com.rajanainart.common.rest.validator.BaseRestValidator;
+import org.springframework.http.HttpHeaders;
 
 public abstract class BaseRestController {
 
@@ -20,7 +19,8 @@ public abstract class BaseRestController {
         TXT ("application/text"),
         TEXT("application/text"),
         XLS ("application/vnd.ms-excel"),
-        XLSX("application/vnd.ms-excel");
+        XLSX("application/vnd.ms-excel"),
+        PDF ("application/pdf");
 
         private final String text;
 
@@ -31,13 +31,14 @@ public abstract class BaseRestController {
     }
 
     public enum HttpContentDisposition {
-        JSON("attachment;filename=RestReport.json"),
-        XML ("attachment;filename=RestReport.xml" ),
-        CSV ("attachment;filename=RestReport.csv" ),
-        TXT ("attachment;filename=RestReport.txt" ),
-        TEXT("attachment;filename=RestReport.txt" ),
-        XLS ("attachment;filename=RestReport.xls" ),
-        XLSX("attachment;filename=RestReport.xlsx");
+        JSON("attachment;filename=%s"),
+        XML ("attachment;filename=%s"),
+        CSV ("attachment;filename=%s"),
+        TXT ("attachment;filename=%s"),
+        TEXT("attachment;filename=%s"),
+        XLS ("attachment;filename=%s"),
+        XLSX("attachment;filename=%s"),
+        PDF ("attachment;filename=%s"),;
 
         private final String text;
 

@@ -78,11 +78,10 @@ public class ImportIntegrationTask implements IntegrationTask {
         executePrePostTasks(context.getTaskConfig().getPreExecValue(), transform);
 
         context.getLogger().log("Fetching records from source");
-        QueryExecutor executor  = new QueryExecutor(config, context.getRestQueryRequest(), context.getSourceDb());
+        QueryExecutor  executor  = new QueryExecutor(config, context.getRestQueryRequest(), context.getSourceDb());
         long           startTime = System.currentTimeMillis();
         List<Long> totalRecords  = new ArrayList<>();
-        List<Map<String, Object>> records     = new ArrayList<>();
-
+        List<Map<String, Object>> records   = new ArrayList<>();
         try (ConcurrencyManager concurrency = new ConcurrencyManager("integration-import-task")) {
             processDelete(qBuilder, config);
             if (current == Status.FAILURE_COMPLETE) return;

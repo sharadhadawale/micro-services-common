@@ -3,8 +3,9 @@ package com.rajanainart.common.rest.validator;
 import java.util.Map;
 
 import com.rajanainart.common.rest.RestQueryConfig;
-import com.rajanainart.common.rest.BaseRestController;
 import org.springframework.stereotype.Component;
+
+import com.rajanainart.common.rest.BaseRestController;
 
 @Component("mandatory-validator")
 public class MandatoryValidator implements BaseRestValidator {

@@ -51,8 +51,8 @@ public class NasController extends BaseRestController {
         try {
             String ext = FileHelper.getFileExtension(fileName);
             if (!ext.isEmpty()) {
-                String type = HttpContentType       .valueOf(ext.toUpperCase(Locale.ENGLISH)).toString();
-                String disp = HttpContentDisposition.valueOf(ext.toUpperCase(Locale.ENGLISH)).toString();
+                String type = HttpContentType.valueOf(ext.toUpperCase(Locale.ENGLISH)).toString();
+                String disp = String.format(HttpContentDisposition.valueOf(ext.toUpperCase(Locale.ENGLISH)).toString(), fileName);
                 response.setContentType(type);
                 response.setHeader("Content-Disposition", disp);
             }

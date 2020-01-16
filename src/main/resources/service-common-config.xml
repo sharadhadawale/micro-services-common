@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<rest-query-framework>
+    <rest-query-config id="QryAllTemplates" name="Get All Templates" service="Template" action="GetAllTemplates" entity="Dummy" query="
+SELECT * FROM CMN_TEMPLATE t ORDER BY t.name" page-size="20">
+
+    </rest-query-config>
+
+    <rest-query-config id="QrySaveTemplate" name="Save Template" service="Template" action="SaveTemplate" entity="Dummy" query="
+INSERT INTO CMN_TEMPLATE (NAME, DESCRIPTION, CONTENT, CONDITION, EMAIL_TO)
+SELECT ?Name, ?Description, ?Content, ?Condition, ?EmailTo
+ON DUPLICATE KEY UPDATE
+NAME = VALUES(NAME), DESCRIPTION = VALUES(DESCRIPTION),
+CONTENT = VALUES(CONTENT), CONDITION = VALUES(CONDITION),
+EMAIL_TO = VALUES(EMAIL_TO)" page-size="20" query-type="DML">
+
+        <parameter id="Name" name="Name" />
+        <parameter id="Description" name="Description" />
+        <parameter id="Content" name="Content" />
+        <parameter id="Condition" name="Condition" />
+        <parameter id="EmailTo" name="EmailTo" />
+
+        <mandatory-validator param1="Name" param2="Description" param3="Content" param4="Condition" param5="EmailTo"
+                             operator-type="AND" execution-type="PRE_DATA_FETCH" />
+    </rest-query-config>
+
+    <rest-query-config id="QryDeleteTemplate" name="Delete Template" service="Template" action="DeleteTemplate" entity="Dummy" query="
+DELETE FROM CMN_TEMPLATE WHERE TEMPLATE_ID = ?ID" page-size="20" query-type="DML">
+
+        <parameter id="ID" name="ID" />
+
+        <mandatory-validator param1="ID" operator-type="AND" execution-type="PRE_DATA_FETCH" />
+    </rest-query-config>
+</rest-query-framework>

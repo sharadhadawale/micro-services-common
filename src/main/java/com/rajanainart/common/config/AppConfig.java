@@ -17,7 +17,6 @@ import org.w3c.dom.NodeList;
 
 import org.xml.sax.SAXException;
 
-import javax.xml.parsers.ParserConfigurationException;
 import javax.xml.xpath.XPathExpressionException;
 
 public final class AppConfig {
@@ -28,9 +27,10 @@ public final class AppConfig {
 
     private static ArrayList<String> resourceNames = new ArrayList<>();
 
-    public static final String APP_PROPERTY_FILE = "bootstrap.properties";
-    public static final String CONFIG_FILE_EXT   = "config-%s.xml";
-    public static final String CONFIG_FOLDER     = "APP_CONFIG_BASE";
+    public static final String APP_PROPERTY_FILE  = "bootstrap.properties";
+    public static final String CONFIG_FILE_EXT    = "config-%s.xml";
+    public static final String CONFIG_FOLDER      = "APP_CONFIG_BASE";
+    public static final String GLOBAL_REST_CONFIG = "service-common-config.xml";
 
     public static String getResourceFilePath() { return APP_PROPERTY_FILE; }
 
@@ -61,11 +61,10 @@ public final class AppConfig {
         for (String name : getResourceNames()) {
             try {
                 NodeList nodes = getNodeList(name, query);
-                for (int index=0; index<nodes.getLength(); index++) {
-                    XmlConfig config = AppContext.getBeanOfType(XmlConfig.class, configBeanName);
-                    config.configure(nodes.item(index));
-                    list.put(XmlNodeHelper.getAttributeValue(nodes.item(index), keyAttribute), (T)config);
-                }
+                buildBeansFromConfig(list, nodes, configBeanName, keyAttribute);
+
+                nodes = getNodeListFromResource(GLOBAL_REST_CONFIG, query);
+                buildBeansFromConfig(list, nodes, configBeanName, keyAttribute);
             }
             catch(Exception e) {
                 log.info(String.format("Error occurred while processing xml configuration:%s", e.getMessage()));
@@ -76,8 +75,21 @@ public final class AppConfig {
         return list;
     }
 
-    public static NodeList getNodeList(String xmlPath, String query) throws ParserConfigurationException, SAXException, IOException, XPathExpressionException {
+    public static <T extends XmlConfig> void buildBeansFromConfig(Map<String, T> list, NodeList nodes, String configBeanName, String keyAttribute) {
+        for (int index=0; index<nodes.getLength(); index++) {
+            XmlConfig config = AppContext.getBeanOfType(XmlConfig.class, configBeanName);
+            config.configure(nodes.item(index));
+            list.put(XmlNodeHelper.getAttributeValue(nodes.item(index), keyAttribute), (T)config);
+        }
+    }
+
+    public static NodeList getNodeList(String xmlPath, String query) throws SAXException, IOException, XPathExpressionException {
         Document document = XmlNodeHelper.buildXmlDocumentFromFilePath(xmlPath);
+        return XmlNodeHelper.queryDocumentForNodes(document, query);
+    }
+
+    public static NodeList getNodeListFromResource(String resourceName, String query) throws SAXException, IOException, XPathExpressionException {
+        Document document = XmlNodeHelper.buildXmlDocumentFromResource(resourceName);
         return XmlNodeHelper.queryDocumentForNodes(document, query);
     }
 }

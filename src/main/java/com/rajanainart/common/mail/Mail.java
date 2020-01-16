@@ -18,4 +18,14 @@ public class Mail {
 	private String 		 mailBody;
 	private String 		 appName ;
 	private  Map<String,byte[]> attachments;
+
+	public static Mail getInstance(MailConfig config) {
+		Mail mail = new Mail();
+		mail.mailFrom    = config.getFrom   ();
+		mail.mailTo      = config.getToList ();
+		mail.mailSubject = config.getSubject();
+		mail.mailBody    = config.getBody   ();
+
+		return mail;
+	}
 }

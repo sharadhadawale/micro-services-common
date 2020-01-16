@@ -1,5 +1,6 @@
 package com.rajanainart.common.config;
 
+import java.lang.annotation.Annotation;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -30,6 +31,17 @@ public class AppContext implements ApplicationContextAware, WebMvcConfigurer {
 
     public static <T> Map<String, T> getBeansOfType(Class<T> clazz) {
         return context.getBeansOfType(clazz);
+    }
+
+    public static <T extends BaseEntity, A extends Annotation> Map<String, T> getBeansOfType(Class<T> clazz, Class<A> annotation) {
+        Map<String, T> beans  = context.getBeansOfType(clazz);
+        Map<String, T> result = new HashMap<>();
+        for (Map.Entry<String, T> bean : beans.entrySet()) {
+            Annotation a = bean.getValue().getClass().getAnnotation(annotation);
+            if (a != null)
+                result.put(bean.getKey(), bean.getValue());
+        }
+        return result;
     }
 
     public static <T> T getBeanOfType(Class<T> clazz) {

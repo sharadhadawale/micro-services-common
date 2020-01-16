@@ -15,7 +15,7 @@ public final class Hierarchy {
     private Database db;
     private TableDetails     dbDetails    ;
     private RestQueryRequest queryRequest ;
-    private QueryExecutor queryExecutor;
+    private QueryExecutor    queryExecutor;
 
     public Hierarchy(Database db, String query) {
         this.query = query;

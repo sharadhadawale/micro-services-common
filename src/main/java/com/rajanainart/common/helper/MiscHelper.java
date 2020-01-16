@@ -25,6 +25,10 @@ public class MiscHelper {
         return result;
     }
 
+    public static List<String> parseAsList(String value, String regex) {
+        return Arrays.asList(value.split(regex));
+    }
+
     public static int fixFortifyLogForging(String value) {
         int actual = -1;
         try {

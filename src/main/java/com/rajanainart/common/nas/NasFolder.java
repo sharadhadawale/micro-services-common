@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 public final class NasFolder {
@@ -43,7 +44,7 @@ public final class NasFolder {
         List<String> result = new ArrayList<>();
         try {
             String[] files = file.list();
-            result = getAllFiles(files);
+            result = Arrays.asList(files);
         }
         catch (SmbException ex) {
             logger.warn(String.format("Error while SMB listing the files: %s", ex.getMessage()));
@@ -56,19 +57,12 @@ public final class NasFolder {
         List<String> result = new ArrayList<>();
         try {
             String[] files = file.list(new NasFileFilter(filterRegex));
-            result = getAllFiles(files);
+            result = Arrays.asList(files);
         }
         catch (SmbException ex) {
             logger.warn(String.format("Error while smb listing the files: %s", ex.getMessage()));
             ex.printStackTrace();
         }
-        return result;
-    }
-
-    private List<String> getAllFiles(String[] files) {
-        List<String> result = new ArrayList<>();
-        for (String f : files)
-            result.add(f);
         return result;
     }
 

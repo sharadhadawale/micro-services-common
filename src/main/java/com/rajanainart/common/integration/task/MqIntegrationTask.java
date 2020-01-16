@@ -21,8 +21,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.HtmlUtils;
 
 import java.security.SecureRandom;
-import java.sql.Connection;
-import java.sql.Statement;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -33,7 +31,7 @@ public class MqIntegrationTask implements IntegrationTask {
     private static final Logger logger = LoggerFactory.getLogger(MqIntegrationTask.class);
     private IntegrationContext context  = null;
     private Status             current  = Status.PROCESSING;
-    private MqConfig mqConfig = null;
+    private MqConfig           mqConfig = null;
     private IntegrationTask.DelegateTransform transform;
 
     @Override
@@ -76,7 +74,7 @@ public class MqIntegrationTask implements IntegrationTask {
             String msg = String.format("Starting kafka poller Host:%s, Topic:%s, PollDurationInMns: %s",
                                             mqConfig.getHost(), mqConfig.getTopicName(), mqConfig.getDurationMns());
             context.getLogger().log(msg);
-            initRuntimeHook();
+            initRuntimeHook(context, String.format("Shutting down kafka poller Host:%s, Topic:%s", mqConfig.getHost(), mqConfig.getTopicName()));
             mq.consume(this::processData);
         }
         else if (mqConfig.getMqUsedFor() == MqConfig.MqUsedFor.PUBLISH) {
@@ -84,7 +82,7 @@ public class MqIntegrationTask implements IntegrationTask {
             int index = 0;
             for (String ct : context.getTaskConfig().getExecValues()) {
                 IntegrationConfig.TaskConfig task = context.getTaskConfig(ct);
-                RestQueryConfig queryConfig = BaseRestController.REST_QUERY_CONFIGS.getOrDefault(task.getExecValue(), null);
+                RestQueryConfig       queryConfig = BaseRestController.REST_QUERY_CONFIGS.getOrDefault(task.getExecValue(), null);
                 if (queryConfig == null) {
                     String msg = "Publish can't be completed, as the REST configuration is not available";
                     context.getLogger().log(msg);
@@ -102,7 +100,7 @@ public class MqIntegrationTask implements IntegrationTask {
                 if (queryConfig.getRestQueryUsedFor() == RestQueryConfig.RestQueryUsedFor.META)
                     buildMqMetaMessage(properties, index++, queryConfig, task);
                 else if (queryConfig.getRestQueryUsedFor() == RestQueryConfig.RestQueryUsedFor.RESULT) {
-                    QueryExecutor executor = new QueryExecutor(queryConfig, context.getRestQueryRequest(), context.getSourceDb());
+                    QueryExecutor             executor = new QueryExecutor(queryConfig, context.getRestQueryRequest(), context.getSourceDb());
                     List<Map<String, Object>> records  = executor.fetchResultSet();
 
                     String  messageId = String.format("integration-result-%s-%s", context.getConfig().getId(), new SecureRandom().nextLong());
@@ -133,32 +131,6 @@ public class MqIntegrationTask implements IntegrationTask {
         }
         current = Status.SUCCESS_COMPLETE;
         return current;
-    }
-
-    private void initRuntimeHook() {
-        Runtime.getRuntime().addShutdownHook(new Thread() {
-            @Override
-            public void run() {
-                String msg = String.format("Shutting down kafka poller Host:%s, Topic:%s", mqConfig.getHost(), mqConfig.getTopicName());
-                logger.info(msg);
-
-                try {
-                    Connection connection = Database.getAdhocJdbcConnection();
-                    try (Statement statement = connection.createStatement()) {
-                        String     query     = String.format("INSERT INTO CMN_INTEGRATION_PROCESS_LOG (process_id, log, as_on) VALUES(%s, '%s', CURRENT_TIMESTAMP)", context.getLogger().getProcessId(), msg);
-                        statement.execute(query);
-                        query = String.format("UPDATE CMN_INTEGRATION_PROCESS SET status = 1 WHERE process_id = %s", context.getLogger().getProcessId());
-                        statement.execute(query);
-                        connection.commit();
-                    }
-                    Database.closeAdhocConnection();
-                }
-                catch(Exception ex) {
-                    logger.error("Exception while shutting down kafka poller");
-                    ex.printStackTrace();
-                }
-            }
-        });
     }
 
     private void buildMqMetaMessage(Map<String, Object> properties, int idx,
@@ -217,26 +189,7 @@ public class MqIntegrationTask implements IntegrationTask {
                 log = String.format("MQ: Processing exec %s/%s", context.getConfig().getId(), context.getTaskConfig().getId());
                 context.getLogger().log(log);
 
-                IntegrationConfig.TaskConfig t = context.getTaskConfig(context.getTaskConfig().getExecValue());
-                if (t != null) {
-                    IntegrationContext newContext = new IntegrationContext(context.getConfig(), context.getLogger(), t.getId());
-                    newContext.setRestQueryRequest(context.getRestQueryRequest());
-                    String          key  = String.format("integration-task-%s", newContext.getTaskConfig().getType().toString().toLowerCase());
-                    IntegrationTask task = newContext.getIntegrationTasks().getOrDefault(key, null);
-                    if (task != null) {
-                        try {
-                            task.setup  (newContext);
-                            task.process(transform );
-                        }
-                        catch (Exception ex) {
-                            context.getLogger().log("Exception while executing dependent task on a MqMessage arrival");
-                            ex.printStackTrace();
-                        }
-                        finally {
-                            newContext.close();
-                        }
-                    }
-                }
+                executeDependentTask(context, transform);
             });
         }
     }

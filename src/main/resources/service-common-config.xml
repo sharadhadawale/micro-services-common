@@ -6,27 +6,141 @@ SELECT * FROM CMN_TEMPLATE t ORDER BY t.name" page-size="20">
 
     </rest-query-config>
 
+    <rest-query-config id="QrySelectTemplate" name="Select Template" service="Template" action="Get" entity="Dummy" query="
+SELECT * FROM CMN_TEMPLATE t WHERE TEMPLATE_ID = ?ID" page-size="20">
+
+        <parameter id="ID" name="ID" />
+
+        <mandatory-validator param1="ID" operator-type="AND" execution-type="PRE_DATA_FETCH" />
+    </rest-query-config>
+
     <rest-query-config id="QrySaveTemplate" name="Save Template" service="Template" action="SaveTemplate" entity="Dummy" query="
-INSERT INTO CMN_TEMPLATE (NAME, DESCRIPTION, CONTENT, CONDITION, EMAIL_TO)
-SELECT ?Name, ?Description, ?Content, ?Condition, ?EmailTo
+INSERT INTO CMN_TEMPLATE (NAME, DESCRIPTION, CONTENT, CONDITION_TEXT, MAIL_TO, INTEGRATION_CRON_ID)
+SELECT ?Name, ?Description, ?Content, ?Condition, ?EmailTo, ?CronID
 ON DUPLICATE KEY UPDATE
 NAME = VALUES(NAME), DESCRIPTION = VALUES(DESCRIPTION),
-CONTENT = VALUES(CONTENT), CONDITION = VALUES(CONDITION),
-EMAIL_TO = VALUES(EMAIL_TO)" page-size="20" query-type="DML">
+CONTENT = VALUES(CONTENT), CONDITION_TEXT = VALUES(CONDITION_TEXT),
+MAIL_TO = VALUES(MAIL_TO), INTEGRATION_CRON_ID = VALUES(INTEGRATION_CRON_ID)" page-size="20" query-type="DML">
 
         <parameter id="Name" name="Name" />
         <parameter id="Description" name="Description" />
         <parameter id="Content" name="Content" />
         <parameter id="Condition" name="Condition" />
         <parameter id="EmailTo" name="EmailTo" />
+        <parameter id="CronID" name="CronID" />
 
-        <mandatory-validator param1="Name" param2="Description" param3="Content" param4="Condition" param5="EmailTo"
+        <mandatory-validator param1="Name" param2="Description" param3="Content" param4="Condition" param5="EmailTo" param6="CronID"
+                             operator-type="AND" execution-type="PRE_DATA_FETCH" />
+    </rest-query-config>
+
+    <rest-query-config id="QryUpdateTemplate" name="Update Template" service="Template" action="UpdateTemplate" entity="Dummy" query="
+UPDATE CMN_TEMPLATE SET
+    NAME = ?Name, DESCRIPTION = ?Description, CONTENT = ?Content,
+    CONDITION_TEXT = ?Condition, MAIL_TO = ?EmailTo,
+    INTEGRATION_CRON_ID = ?CronID
+WHERE TEMPLATE_ID = ?ID" page-size="20" query-type="DML">
+
+        <parameter id="Name" name="Name" />
+        <parameter id="Description" name="Description" />
+        <parameter id="Content" name="Content" />
+        <parameter id="Condition" name="Condition" />
+        <parameter id="EmailTo" name="EmailTo" />
+        <parameter id="ID" name="ID" />
+        <parameter id="CronID" name="CronID" />
+
+        <mandatory-validator param1="Name" param2="Description" param3="Content" param4="Condition" param5="EmailTo" param6="ID" param7="CronID"
                              operator-type="AND" execution-type="PRE_DATA_FETCH" />
     </rest-query-config>
 
     <rest-query-config id="QryDeleteTemplate" name="Delete Template" service="Template" action="DeleteTemplate" entity="Dummy" query="
 DELETE FROM CMN_TEMPLATE WHERE TEMPLATE_ID = ?ID" page-size="20" query-type="DML">
 
+        <parameter id="ID" name="ID" />
+
+        <mandatory-validator param1="ID" operator-type="AND" execution-type="PRE_DATA_FETCH" />
+    </rest-query-config>
+
+    <rest-query-config id="QryAllScheduler" name="Get All Cron Schedulers" service="Scheduler" action="GetAllSchedulers" entity="Dummy" query="
+SELECT * FROM CMN_INTEGRATION_CRON t ORDER BY t.name" page-size="20">
+
+    </rest-query-config>
+
+    <rest-query-config id="QrySelectScheduler" name="Select Cron Schedulers" service="Scheduler" action="Get" entity="Dummy" query="
+SELECT * FROM CMN_INTEGRATION_CRON t WHERE INTEGRATION_CRON_ID = ?ID" page-size="20">
+
+        <parameter id="ID" name="ID" />
+
+        <mandatory-validator param1="ID" operator-type="AND" execution-type="PRE_DATA_FETCH" />
+    </rest-query-config>
+
+    <rest-query-config id="QrySaveScheduler" name="Save Scheduler" service="Scheduler" action="SaveScheduler" entity="Dummy" query="
+INSERT INTO CMN_INTEGRATION_CRON (
+    NAME, DESCRIPTION, SCHEDULE_FOR, FREQUENCY, MONTH_DAY, WEEK_DAY, HOUR, MINUTE, TIME_ZONE, IS_RUNNING
+)
+SELECT ?Name, ?Description, ?ScheduleFor, ?Frequency, ?MonthDay, ?WeekDay, ?Hour, ?Minute, ?TimeZone, 0
+ON DUPLICATE KEY UPDATE
+NAME = VALUES(NAME), DESCRIPTION = VALUES(DESCRIPTION),
+SCHEDULE_FOR = VALUES(SCHEDULE_FOR), FREQUENCY = VALUES(FREQUENCY),
+MONTH_DAY = VALUES(MONTH_DAY), WEEK_DAY = VALUES(WEEK_DAY),
+HOUR = VALUES(HOUR), MINUTE = VALUES(MINUTE),
+TIME_ZONE = VALUES(TIME_ZONE)" page-size="20" query-type="DML">
+
+        <parameter id="Name" name="Name" />
+        <parameter id="Description" name="Description" />
+        <parameter id="ScheduleFor" name="ScheduleFor" />
+        <parameter id="Frequency" name="Frequency" />
+        <parameter id="MonthDay" name="MonthDay" />
+        <parameter id="WeekDay" name="WeekDay" />
+        <parameter id="Hour" name="Hour" />
+        <parameter id="Minute" name="Minute" />
+        <parameter id="TimeZone" name="TimeZone" />
+
+        <mandatory-validator param1="Name" param2="Description" param3="ScheduleFor" param4="Frequency"
+                             param5="Hour" param6="Minute" param7="TimeZone" operator-type="AND" execution-type="PRE_DATA_FETCH" />
+    </rest-query-config>
+
+    <rest-query-config id="QryUpdateScheduler" name="Update Scheduler" service="Scheduler" action="UpdateScheduler" entity="Dummy" query="
+UPDATE CMN_INTEGRATION_CRON SET
+    NAME = ?Name, DESCRIPTION = ?Description, SCHEDULE_FOR = ?ScheduleFor,
+    FREQUENCY = ?Frequency, MONTH_DAY = ?MonthDay, WEEK_DAY = ?WeekDay,
+    HOUR = ?Hour, MINUTE = ?Minute, TIME_ZONE = ?TimeZone
+WHERE INTEGRATION_CRON_ID = ?ID" page-size="20" query-type="DML">
+
+        <parameter id="Name" name="Name" />
+        <parameter id="Description" name="Description" />
+        <parameter id="ScheduleFor" name="ScheduleFor" />
+        <parameter id="Frequency" name="Frequency" />
+        <parameter id="MonthDay" name="MonthDay" />
+        <parameter id="WeekDay" name="WeekDay" />
+        <parameter id="Hour" name="Hour" />
+        <parameter id="Minute" name="Minute" />
+        <parameter id="TimeZone" name="TimeZone" />
+        <parameter id="ID" name="ID" />
+
+        <mandatory-validator param1="Name" param2="Description" param3="ScheduleFor" param4="Frequency"
+                             param5="Hour" param6="Minute" param7="TimeZone" param8="ID" operator-type="AND" execution-type="PRE_DATA_FETCH" />
+    </rest-query-config>
+
+    <rest-query-config id="QryDeleteScheduler" name="Delete Scheduler" service="Scheduler" action="DeleteScheduler" entity="Dummy" query="
+DELETE FROM CMN_INTEGRATION_CRON WHERE INTEGRATION_CRON_ID = ?ID" page-size="20" query-type="DML">
+
+        <parameter id="ID" name="ID" />
+
+        <mandatory-validator param1="ID" operator-type="AND" execution-type="PRE_DATA_FETCH" />
+    </rest-query-config>
+
+    <rest-query-config id="QryFrequency" name="Get All Frequencies" service="Scheduler" action="GetAllFrequency" entity="Dummy" query="
+SELECT * FROM CMN_SYSTEM_ENUMS WHERE enum_name = 'CRON_FREQUENCY'" page-size="20">
+
+    </rest-query-config>
+
+    <rest-query-config id="QryWeekdays" name="Get All Week Days" service="Scheduler" action="GetAllWeekDays" entity="Dummy" query="
+SELECT * FROM CMN_SYSTEM_ENUMS WHERE enum_name = 'CRON_WEEK_DAY'" page-size="20">
+
+    </rest-query-config>
+
+    <rest-query-config id="QrySchedulerCount" name="Get count of scheduler" service="Scheduler" action="GetSchedulerCount" entity="Dummy" query="
+SELECT COUNT(*) AS COUNT FROM CMN_TEMPLATE WHERE INTEGRATION_CRON_ID = ?ID" page-size="20">
         <parameter id="ID" name="ID" />
 
         <mandatory-validator param1="ID" operator-type="AND" execution-type="PRE_DATA_FETCH" />
